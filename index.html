@@ -218,23 +218,41 @@ const statusEl = document.getElementById('cloudSyncStatus');
 
 function loadLocal() {
   try {
-    const data = JSON.parse(localStorage.getItem('leave_calendar_data') || '{}');
-    if (data.leaveTypes) leaveTypes = data.leaveTypes;
-    if (data.events) events = data.events;
-    if (data.recurrings) recurrings = data.recurrings;
-    if (data.bgImages) bgImages = data.bgImages;
-    if (data.bannerImages) bannerImages = data.bannerImages;
-    if (data.sideLeft) sideLeft = data.sideLeft;
-    if (data.sideRight) sideRight = data.sideRight;
-    if (data.slideshowActive !== undefined) slideshowActive = data.slideshowActive;
-    if (data.slideshowTime) slideshowTime = data.slideshowTime;
-  } catch(e) {}
+    const coreData = JSON.parse(localStorage.getItem('leave_calendar_core') || '{}');
+    if (coreData.leaveTypes) leaveTypes = coreData.leaveTypes;
+    if (coreData.events) events = coreData.events;
+    if (coreData.recurrings) recurrings = coreData.recurrings;
+    if (coreData.slideshowActive !== undefined) slideshowActive = coreData.slideshowActive;
+    if (coreData.slideshowTime) slideshowTime = coreData.slideshowTime;
+
+    const imgData = JSON.parse(localStorage.getItem('leave_calendar_images') || '{}');
+    if (imgData.bgImages) bgImages = imgData.bgImages;
+    if (imgData.bannerImages) bannerImages = imgData.bannerImages;
+    if (imgData.sideLeft) sideLeft = imgData.sideLeft;
+    if (imgData.sideRight) sideRight = imgData.sideRight;
+  } catch(e) {
+    console.error('讀取本地資料失敗', e);
+  }
 }
+
 function saveLocal() {
-  localStorage.setItem('leave_calendar_data', JSON.stringify({
-    leaveTypes, events, recurrings, bgImages, bannerImages, sideLeft, sideRight, slideshowActive, slideshowTime
-  }));
+  try {
+    localStorage.setItem('leave_calendar_core', JSON.stringify({
+      leaveTypes, events, recurrings, slideshowActive, slideshowTime
+    }));
+  } catch(e) {
+    alert('儲存排假資料失敗：容量可能已滿');
+  }
+
+  try {
+    localStorage.setItem('leave_calendar_images', JSON.stringify({
+      bgImages, bannerImages, sideLeft, sideRight
+    }));
+  } catch(e) {
+    alert('圖片容量過大！建議改用圖片網址，或清除部分相冊圖片。');
+  }
 }
+
 function saveCloud() {
   statusEl.textContent = '🔄 同步中...';
   statusEl.className = 'syncing';
@@ -331,7 +349,7 @@ function renderCalendar() {
 
 function renderLeaveTypes() {
   document.getElementById('leaveTypes').innerHTML = leaveTypes.map(t =>
-    `<div class="leave-type-chip" style="background:${t.color}">${t.emoji||''} ${t.name}</div>`
+    `<div class="leave-type-chip" style="background:${t.color}">${t.emoji\vert{}\vert{}''}${t.name}</div>`
   ).join('');
 }
 function renderUpcoming() {
@@ -339,7 +357,7 @@ function renderUpcoming() {
   const today = formatDate(new Date());
   const items = events.filter(e => e.end >= today).sort((a,b) => a.start.localeCompare(b.start)).slice(0, 8);
   if (!items.length) { el.innerHTML = '<div style="color:#999;padding:8px 0">目前沒有即將到來的事件</div>'; return; }
-  el.innerHTML = items.map(e => `<div style="padding:6px 0;border-bottom:1px solid #eee">${e.start} ~ ${e.end}　<span style="color:${e.color}">●</span> ${e.name}</div>`).join('');
+  el.innerHTML = items.map(e => `<div style="padding:6px 0;border-bottom:1px solid #eee">${e.start} ~${e.end} <span style="color:${e.color}">●</span> ${e.name}</div>`).join('');
 }
 function updateMonthOffCount() {
   const y = currentDate.getFullYear(), m = currentDate.getMonth();
@@ -378,145 +396,4 @@ function openEventModal(dateStr, eventId) {
   document.getElementById('deleteEventBtn').style.display = eventId ? 'inline-block' : 'none';
   const typesEl = document.getElementById('modalTypes');
   typesEl.innerHTML = leaveTypes.map(t =>
-    `<div class="leave-type-chip" style="background:${t.color};margin:4px;display:inline-block" data-name="${t.name}" data-color="${t.color}">${t.emoji||''} ${t.name}</div>`
-  ).join('');
-  typesEl.querySelectorAll('.leave-type-chip').forEach(el => {
-    el.onclick = () => {
-      document.getElementById('eventColor').value = el.getAttribute('data-color');
-      if (!document.getElementById('eventName').value) document.getElementById('eventName').value = el.getAttribute('data-name');
-    };
-  });
-  document.getElementById('eventModal').classList.add('active');
-}
-document.getElementById('saveEventBtn').onclick = function() {
-  try {
-    saveEvent();
-  } catch (err) {
-    alert('儲存時發生錯誤：' + err.message);
-    console.error(err);
-  }
-};
-function saveEvent() {
-  const name = document.getElementById('eventName').value.trim();
-  const start = document.getElementById('rangeStart').value;
-  const end = document.getElementById('rangeEnd').value;
-  const color = document.getElementById('eventColor').value;
-  if (!name || !start || !end) { alert('請填名稱與日期'); return; }
-  if (editingEventId) {
-    const ev = events.find(e => e.id === editingEventId);
-    if (ev) { ev.name = name; ev.start = start; ev.end = end; ev.color = color; }
-  } else {
-    events.push({ id: Date.now(), name, start, end, color });
-  }
-  save(); closeEventModal(); renderCalendar();
-}
-function deleteCurrentEvent() {
-  if (editingEventId && confirm('刪除此事件？')) {
-    events = events.filter(e => e.id !== editingEventId);
-    save(); closeEventModal(); renderCalendar();
-  }
-}
-
-function addLeaveType() {
-  const modal = document.createElement('div');
-  modal.className = 'modal-overlay active';
-  modal.innerHTML = `<div class="modal-card" style="max-width:360px"><h3 style="margin-top:0;color:#c55a11">新增類型</h3><div style="margin-bottom:10px"><label>名稱</label><input type="text" id="newTypeName" style="width:100%;padding:8px;margin-top:4px;border-radius:6px;border:1px solid #ddd"></div><div style="margin-bottom:16px"><label>顏色</label><br><input type="color" id="newTypeColor" value="#ff6b6b" style="margin-top:6px;width:60px;height:36px;border:none"></div><div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">取消</button><button class="btn btn-primary" onclick="const n=document.getElementById('newTypeName').value.trim();const c=document.getElementById('newTypeColor').value;if(n){leaveTypes.push({id:'t_'+Date.now(),name:n,color:c,emoji:'📌'});save();renderLeaveTypes();this.closest('.modal-overlay').remove();}">確定</button></div></div>`;
-  document.body.appendChild(modal);
-}
-function openLeaveManage() {
-  let html = leaveTypes.map((t, i) => `
-    <div style="display:flex;align-items:center;gap:8px;margin:6px 0">
-      <div class="leave-type-chip" style="background:${t.color};flex:1">${t.emoji||''} ${t.name}</div>
-      <button class="btn btn-sm btn-danger" data-idx="${i}" onclick="deleteLeaveType(Number(this.dataset.idx))">刪除</button>
-    </div>
-  `).join('');
-  const modal = document.createElement('div');
-  modal.className = 'modal-overlay active';
-  modal.innerHTML = `<div class="modal-card" style="max-width:420px"><h3 style="margin-top:0;color:#c55a11">管理類型</h3>${html}<div style="margin-top:16px;text-align:right"><button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">關閉</button></div></div>`;
-  document.body.appendChild(modal);
-}
-function deleteLeaveType(i) {
-  if (confirm('刪除「' + leaveTypes[i].name + '」？')) {
-    leaveTypes.splice(i, 1);
-    save();
-    renderLeaveTypes();
-    document.querySelector('.modal-overlay.active')?.remove();
-    openLeaveManage();
-  }
-}
-
-function openRecurringModal() { document.getElementById('recurringModal').classList.add('active'); }
-function closeRecurringModal() { document.getElementById('recurringModal').classList.remove('active'); }
-function saveRecurring() {
-  const name = document.getElementById('recName').value.trim();
-  const md = document.getElementById('recMonthDay').value.trim();
-  const color = document.getElementById('recColor').value;
-  if (!name || !/^\d{2}-\d{2}$/.test(md)) { alert('請填正確名稱與日期格式 (MM-DD)'); return; }
-  recurrings.push({ id: Date.now(), name, monthDay: md, color });
-  save(); closeRecurringModal(); renderRecurring();
-}
-function deleteRecurring(i) { if (confirm('刪除？')) { recurrings.splice(i, 1); save(); renderRecurring(); } }
-
-function updateGalleryDisplay() {
-  const leftImg = document.getElementById('leftGalleryImg');
-  const rightImg = document.getElementById('rightGalleryImg');
-  const topImg = document.getElementById('topBannerImg');
-  if (bgImages.length) { currentBgIndex = currentBgIndex % bgImages.length; leftImg.src = rightImg.src = bgImages[currentBgIndex]; }
-  else { leftImg.src = rightImg.src = ''; }
-  if (bannerImages.length) { currentBannerIndex = currentBannerIndex % bannerImages.length; topImg.src = bannerImages[currentBannerIndex]; }
-  else { topImg.src = ''; }
-  if (sideLeft) document.getElementById('fullSideLeft').style.backgroundImage = `url('${sideLeft}')`;
-  if (sideRight) document.getElementById('fullSideRight').style.backgroundImage = `url('${sideRight}')`;
-  renderThumbnails();
-}
-function renderThumbnails() {
-  document.getElementById('bgThumbsContainer').innerHTML = bgImages.map((url, i) => `<div class="bg-thumb-item"><img src="${url}"><button class="bg-thumb-del" onclick="bgImages.splice(${i},1);save();updateGalleryDisplay();">✕</button></div>`).join('');
-  document.getElementById('bannerThumbsContainer').innerHTML = bannerImages.map((url, i) => `<div class="bg-thumb-item"><img src="${url}"><button class="bg-thumb-del" onclick="bannerImages.splice(${i},1);save();updateGalleryDisplay();">✕</button></div>`).join('');
-}
-document.getElementById('slideshowToggle').onchange = function() { slideshowActive = this.checked; save(); };
-document.getElementById('slideshowInterval').onchange = function() { slideshowTime = Number(this.value); save(); };
-document.getElementById('bgFileInput').onchange = function(e) { const f=e.target.files[0]; if(!f)return; if(f.size>800*1024)alert('檔案偏大，可能無法雲端同步'); const r=new FileReader(); r.onload=ev=>{bgImages.push(ev.target.result);save();updateGalleryDisplay();e.target.value='';}; r.readAsDataURL(f); };
-document.getElementById('btnAddBgUrl').onclick = function() { const u=document.getElementById('bgUrlInput').value.trim(); if(u){bgImages.push(u);save();updateGalleryDisplay();document.getElementById('bgUrlInput').value='';} };
-document.getElementById('bannerFileInput').onchange = function(e) { const f=e.target.files[0]; if(!f)return; if(f.size>800*1024)alert('檔案偏大，可能無法雲端同步'); const r=new FileReader(); r.onload=ev=>{bannerImages.push(ev.target.result);save();updateGalleryDisplay();e.target.value='';}; r.readAsDataURL(f); };
-document.getElementById('btnAddBannerUrl').onclick = function() { const u=document.getElementById('bannerUrlInput').value.trim(); if(u){bannerImages.push(u);save();updateGalleryDisplay();document.getElementById('bannerUrlInput').value='';} };
-document.getElementById('btnSetLeft').onclick = function() { const u=document.getElementById('leftSideUrl').value.trim(); if(u){sideLeft=u;save();updateGalleryDisplay();document.getElementById('leftSideUrl').value='';} };
-document.getElementById('btnSetRight').onclick = function() { const u=document.getElementById('rightSideUrl').value.trim(); if(u){sideRight=u;save();updateGalleryDisplay();document.getElementById('rightSideUrl').value='';} };
-document.getElementById('leftSideFile').onchange = function(e) { const f=e.target.files[0]; if(!f)return; const r=new FileReader(); r.onload=ev=>{sideLeft=ev.target.result;save();updateGalleryDisplay();e.target.value='';}; r.readAsDataURL(f); };
-document.getElementById('rightSideFile').onchange = function(e) { const f=e.target.files[0]; if(!f)return; const r=new FileReader(); r.onload=ev=>{sideRight=ev.target.result;save();updateGalleryDisplay();e.target.value='';}; r.readAsDataURL(f); };
-
-function exportData() {
-  const blob = new Blob([JSON.stringify({leaveTypes, events, recurrings, bgImages, bannerImages, sideLeft, sideRight, slideshowActive, slideshowTime}, null, 2)], {type:'application/json'});
-  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = '排假資料.json'; a.click();
-}
-function importData(e) {
-  const f = e.target.files[0]; if (!f) return;
-  const r = new FileReader();
-  r.onload = () => {
-    try {
-      const d = JSON.parse(r.result);
-      leaveTypes = d.leaveTypes || leaveTypes; events = d.events || events; recurrings = d.recurrings || recurrings;
-      bgImages = d.bgImages || bgImages; bannerImages = d.bannerImages || bannerImages;
-      sideLeft = d.sideLeft || sideLeft; sideRight = d.sideRight || sideRight;
-      slideshowActive = d.slideshowActive || false; slideshowTime = d.slideshowTime || 10000;
-      save(); renderAll(); alert('匯入成功');
-    } catch { alert('格式錯誤'); }
-  };
-  r.readAsText(f);
-}
-
-function renderAll() { renderCalendar(); renderRecurring(); updateGalleryDisplay(); }
-
-document.querySelectorAll('.tab-btn').forEach(btn => {
-  btn.onclick = () => {
-    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    document.getElementById(btn.dataset.tab).classList.add('active');
-    btn.classList.add('active');
-    if (btn.dataset.tab === 'tab-recurring') renderRecurring();
-  };
-});
-
-renderAll();
-</script>
-</body>
-</html>
+    `<div
