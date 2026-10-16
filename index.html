@@ -147,12 +147,13 @@ function renderCalendar() {
       }
     };
     daysEl.appendChild(el);
-    events.forEach(ev => {
+    events.forEach((ev, idx) => {
       if (ds >= ev.start && ds <= ev.end) {
         const bar = document.createElement('div');
         bar.className = 'event-bar';
         bar.style.background = ev.color || '#ff6b6b';
         bar.textContent = ev.name || '';
+        bar.style.bottom = (4 + idx * 16) + 'px';
         el.appendChild(bar);
       }
     });
