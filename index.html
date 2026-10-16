@@ -123,14 +123,14 @@ let events = [];
 let dayNotes = {};
 let recurrings = [];
 let selectedQuick = null;
+let eraserMode = false;
+let editingDate = null;
 let quickPresets = [
   { name: '休假', color: '#ff6b6b' },
   { name: '出國', color: '#3b82f6' },
   { name: '特休', color: '#10b981' },
   { name: '補休', color: '#f59e0b' }
 ];
-let eraserMode = false;
-let editingDate = null;
 const statusEl = document.getElementById('cloudSyncStatus');
 
 function loadLocal() {
@@ -138,16 +138,17 @@ function loadLocal() {
     const data = JSON.parse(localStorage.getItem('leave_calendar_data') || '{}');
     if (data.events) events = data.events;
     if (data.dayNotes) dayNotes = data.dayNotes;
+    if (data.recurrings) recurrings = data.recurrings;
     if (data.quickPresets) quickPresets = data.quickPresets;
   } catch(e) {}
 }
 function saveLocal() {
-  try { localStorage.setItem('leave_calendar_data', JSON.stringify({ events, dayNotes, recurrings })); }
+  try { localStorage.setItem('leave_calendar_data', JSON.stringify({ events, dayNotes, recurrings, quickPresets })); }
   catch(e) { localStorage.removeItem('leave_calendar_data'); }
 }
 function saveCloud() {
   statusEl.textContent = '🔄 同步中...'; statusEl.className = 'syncing';
-  dbRef.set({ events, dayNotes, recurrings }).then(() => { statusEl.textContent = '☁️ 已同步'; statusEl.className = ''; }).catch(() => { statusEl.textContent = '⚠️ 同步失敗'; statusEl.className = 'syncing'; });
+  dbRef.set({ events, dayNotes, recurrings, quickPresets }).then(() => { statusEl.textContent = '☁️ 已同步'; statusEl.className = ''; }).catch(() => { statusEl.textContent = '⚠️ 同步失敗'; statusEl.className = 'syncing'; });
 }
 function save() { saveLocal(); saveCloud(); }
 
@@ -246,6 +247,38 @@ function selectQuick(name, color) {
   eraserMode = false;
   renderQuickBar();
 }
+function toggleEraser() {
+  eraserMode = !eraserMode;
+  selectedQuick = null;
+  renderQuickBar();
+}
+function showEraserPicker(dateStr, dayEvs) {
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay active';
+  let html = dayEvs.map(ev => `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid #eee">
+      <span style="color:${ev.color}">● ${ev.name}</span>
+      <button class="btn btn-sm btn-danger" data-id="${ev.id}">刪除</button>
+    </div>
+  `).join('');
+  modal.innerHTML = `
+    <div class="modal-card" style="max-width:360px">
+      <h3 style="margin-top:0;color:#c55a11">${dateStr} 刪除事件</h3>
+      ${html}
+      <div style="margin-top:16px;text-align:right">
+        <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">取消</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+  modal.querySelectorAll('[data-id]').forEach(btn => {
+    btn.onclick = () => {
+      const id = Number(btn.getAttribute('data-id'));
+      events = events.filter(e => e.id !== id);
+      save(); renderCalendar();
+      modal.remove();
+    };
+  });
+}
 function openQuickManage() {
   const modal = document.createElement('div');
   modal.className = 'modal-overlay active';
@@ -282,52 +315,6 @@ function addQuickPreset() {
   document.querySelector('.modal-overlay.active')?.remove();
   openQuickManage();
 }
-  eraserMode = !eraserMode;
-  selectedQuick = null;
-  renderQuickBar();
-}
-function showEraserPicker(dateStr, dayEvs) {
-  const modal = document.createElement('div');
-  modal.className = 'modal-overlay active';
-  let html = dayEvs.map(ev => `
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid #eee">
-      <span style="color:${ev.color}">● ${ev.name}</span>
-      <button class="btn btn-sm btn-danger" data-id="${ev.id}">刪除</button>
-    </div>
-  `).join('');
-  modal.innerHTML = `
-    <div class="modal-card" style="max-width:360px">
-      <h3 style="margin-top:0;color:#c55a11">${dateStr} 刪除事件</h3>
-      ${html}
-      <div style="margin-top:16px;text-align:right">
-        <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">取消</button>
-      </div>
-    </div>`;
-  document.body.appendChild(modal);
-  modal.querySelectorAll('[data-id]').forEach(btn => {
-    btn.onclick = () => {
-      const id = Number(btn.getAttribute('data-id'));
-      events = events.filter(e => e.id !== id);
-      save(); renderCalendar();
-      modal.remove();
-    };
-  });
-}
-
-function updateMonthOffCount() {
-  const y = currentDate.getFullYear(), m = currentDate.getMonth();
-  const monthStart = formatDate(new Date(y, m, 1));
-  const monthEnd = formatDate(new Date(y, m+1, 0));
-  let count = 0;
-  events.forEach(ev => {
-    if (ev.name === '休假' || ev.color === '#ff6b6b') {
-      let d = new Date(Math.max(new Date(ev.start), new Date(monthStart)));
-      const end = new Date(Math.min(new Date(ev.end), new Date(monthEnd)));
-      while (d <= end) { count++; d.setDate(d.getDate()+1); }
-    }
-  });
-  document.getElementById('monthOffCount').textContent = count ? `本月休假：${count} 天` : '';
-}
 
 function openEventModal(dateStr) {
   editingDate = dateStr;
@@ -357,8 +344,13 @@ function saveDayEvent() {
   const color = document.getElementById('eventColor').value;
   const note = document.getElementById('dayNote').value.trim();
   if (name && start && end) {
-    events.push({ id: Date.now(), name, start, end, color });
+    events.push({ id: Date.now(), name, start, end, color, note: '' });
   }
+  document.querySelectorAll('.ev-note').forEach(input => {
+    const id = Number(input.getAttribute('data-id'));
+    const ev = events.find(e => e.id === id);
+    if (ev) ev.note = input.value.trim();
+  });
   if (editingDate) {
     if (note) dayNotes[editingDate] = note;
     else delete dayNotes[editingDate];
@@ -390,7 +382,7 @@ function nextMonth() { currentDate.setMonth(currentDate.getMonth()+1); renderCal
 function goToday() { currentDate = new Date(); renderCalendar(); }
 
 function exportData() {
-  const blob = new Blob([JSON.stringify({ events, dayNotes, recurrings }, null, 2)], {type:'application/json'});
+  const blob = new Blob([JSON.stringify({ events, dayNotes, recurrings, quickPresets }, null, 2)], {type:'application/json'});
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = '排假資料.json'; a.click();
 }
 
