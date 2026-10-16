@@ -283,6 +283,8 @@ let recurrings = []; // { id, name, monthDay: 'MM-DD', color }
 
 let bgImages = [];
 let bannerImages = [];
+let sideLeft = '';
+let sideRight = '';
 
 const statusEl = document.getElementById('cloudSyncStatus');
 
@@ -294,12 +296,14 @@ function loadLocal() {
     if (data.recurrings) recurrings = data.recurrings;
     if (data.bgImages) bgImages = data.bgImages;
     if (data.bannerImages) bannerImages = data.bannerImages;
+    if (data.sideLeft) sideLeft = data.sideLeft;
+    if (data.sideRight) sideRight = data.sideRight;
   } catch(e) {}
 }
 
 function saveLocal() {
   localStorage.setItem('leave_calendar_data', JSON.stringify({
-    leaveTypes, leaves, recurrings, bgImages, bannerImages
+    leaveTypes, leaves, recurrings, bgImages, bannerImages, sideLeft, sideRight
   }));
 }
 
@@ -307,7 +311,7 @@ function saveCloud() {
   if (!dbRef) return;
   statusEl.textContent = '🔄 同步中...';
   statusEl.className = 'syncing';
-  dbRef.set({ leaveTypes, leaves, recurrings, bgImages, bannerImages }).then(() => {
+  dbRef.set({ leaveTypes, leaves, recurrings, bgImages, bannerImages, sideLeft, sideRight }).then(() => {
     statusEl.textContent = '☁️ 已同步';
     statusEl.className = '';
   }).catch(() => {
@@ -332,6 +336,8 @@ if (USE_FIREBASE && dbRef) {
       recurrings = val.recurrings || recurrings;
       bgImages = val.bgImages || bgImages;
       bannerImages = val.bannerImages || bannerImages;
+      sideLeft = val.sideLeft || sideLeft;
+      sideRight = val.sideRight || sideRight;
       saveLocal();
       renderAll();
     }
@@ -534,6 +540,11 @@ function updateGalleries() {
     left.src = right.src = bgImages[0];
   }
   if (bannerImages.length) top.src = bannerImages[0];
+
+  // 套用左右大背景
+  if (sideLeft) document.getElementById('fullSideLeft').style.backgroundImage = `url('${sideLeft}')`;
+  if (sideRight) document.getElementById('fullSideRight').style.backgroundImage = `url('${sideRight}')`;
+
   renderThumbs();
 }
 
@@ -558,8 +569,11 @@ function addBannerUrl() {
 function setSide(side) {
   const url = document.getElementById(side+'SideUrl').value.trim();
   if (url) {
-    document.getElementById(side==='left'?'fullSideLeft':'fullSideRight').style.backgroundImage = `url('${url}')`;
-    localStorage.setItem('side_'+side, url);
+    if (side === 'left') sideLeft = url;
+    else sideRight = url;
+    save();
+    updateGalleries();
+    document.getElementById(side+'SideUrl').value = '';
   }
 }
 
@@ -579,7 +593,7 @@ document.getElementById('bannerFileInput').onchange = e => {
 
 // 匯出匯入
 function exportData() {
-  const blob = new Blob([JSON.stringify({leaveTypes, leaves, recurrings, bgImages, bannerImages}, null, 2)], {type:'application/json'});
+  const blob = new Blob([JSON.stringify({leaveTypes, leaves, recurrings, bgImages, bannerImages, sideLeft, sideRight}, null, 2)], {type:'application/json'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = '排假資料.json';
@@ -596,6 +610,8 @@ function importData(e) {
       recurrings = d.recurrings || recurrings;
       bgImages = d.bgImages || bgImages;
       bannerImages = d.bannerImages || bannerImages;
+      sideLeft = d.sideLeft || sideLeft;
+      sideRight = d.sideRight || sideRight;
       save();
       renderAll();
       alert('匯入成功');
@@ -619,12 +635,6 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.classList.add('active');
     if (btn.dataset.tab === 'tab-recurring') renderRecurring();
   };
-});
-
-// 恢復側邊背景
-['left','right'].forEach(s => {
-  const saved = localStorage.getItem('side_'+s);
-  if (saved) document.getElementById(s==='left'?'fullSideLeft':'fullSideRight').style.backgroundImage = `url('${saved}')`;
 });
 
 renderAll();
