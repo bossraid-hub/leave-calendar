@@ -141,45 +141,32 @@ function renderCalendar() {
     const ds = formatDate(new Date(y, m, d));
     const el = document.createElement('div');
     el.className = 'day' + (ds === todayStr ? ' today' : '');
-    el.textContent = d;
+    el.innerHTML = `<span style="position:absolute;top:4px;right:6px;font-size:0.85rem">${d}</span>`;
     el.onclick = () => openEventModal(ds);
     daysEl.appendChild(el);
     dayCells.push(ds);
+
+    // 在這個格子裡畫屬於它的色條
+    events.forEach(ev => {
+      if (ds >= ev.start && ds <= ev.end) {
+        const bar = document.createElement('div');
+        bar.className = 'event-bar';
+        bar.style.background = ev.color || '#ff6b6b';
+        bar.textContent = ev.name || '';
+        bar.style.position = 'absolute';
+        bar.style.bottom = '4px';
+        bar.style.left = '4px';
+        bar.style.right = '4px';
+        bar.style.height = '14px';
+        bar.style.fontSize = '10px';
+        el.appendChild(bar);
+      }
+    });
   }
   const remain = 42 - dayCells.length;
   for (let d = 1; d <= remain; d++) {
     const el = document.createElement('div'); el.className = 'day other'; el.textContent = d; daysEl.appendChild(el); dayCells.push(null);
   }
-
-  const monthStart = formatDate(new Date(y, m, 1));
-  const monthEnd = formatDate(new Date(y, m, total));
-  events.forEach(ev => {
-    if (ev.end < monthStart || ev.start > monthEnd) return;
-    // 計算這個事件在當月實際覆蓋的格子範圍
-    let startCell = -1, endCell = -1;
-    dayCells.forEach((ds, i) => {
-      if (!ds) return;
-      if (ds >= ev.start && ds <= ev.end) {
-        if (startCell === -1) startCell = i;
-        endCell = i;
-      }
-    });
-    if (startCell < 0) return;
-    const startEl = daysEl.children[startCell];
-    const endEl = daysEl.children[endCell];
-    if (!startEl || !endEl) return;
-    const bar = document.createElement('div');
-    bar.className = 'event-bar';
-    bar.style.background = ev.color || '#ff6b6b';
-    bar.textContent = ev.name || '';
-    const parent = daysEl.getBoundingClientRect();
-    const s = startEl.getBoundingClientRect();
-    const e = endEl.getBoundingClientRect();
-    bar.style.left = (s.left - parent.left + 6) + 'px';
-    bar.style.width = (e.right - s.left - 12) + 'px';
-    bar.style.top = '4px';
-    daysEl.appendChild(bar);
-  });
 
   renderUpcoming();
   updateMonthOffCount();
