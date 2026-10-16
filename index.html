@@ -94,6 +94,11 @@ body.dark .bg-setting-panel{background:#333;color:#eee}
       <input type="text" id="newSongName" placeholder="輸入歌曲名稱" style="flex:1;padding:8px;border-radius:8px;border:1px solid #ddd">
       <button class="btn btn-primary" onclick="addSong()">新增</button>
     </div>
+    <details style="margin-top:12px">
+      <summary style="cursor:pointer;font-weight:600">批量新增（貼整份歌單）</summary>
+      <textarea id="batchSongs" rows="6" style="width:100%;margin-top:8px;padding:8px;border-radius:8px;border:1px solid #ddd" placeholder="每行一首，例如：&#10;1. 泣き地蔵&#10;2. ホムンクルス"></textarea>
+      <button class="btn btn-sm btn-secondary" style="margin-top:6px" onclick="batchAddSongs()">批次加入</button>
+    </details>
     <div id="lyricEditor" style="display:none;margin-top:20px;padding:16px;background:rgba(255,255,255,.6);border-radius:12px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
         <strong id="lyricTitle"></strong>
@@ -516,6 +521,13 @@ function addSong() {
   if (!title) return;
   songs.push({ id: Date.now(), title, lyric: '' });
   input.value = '';
+  save(); renderSongs();
+}
+function batchAddSongs() {
+  const text = document.getElementById('batchSongs').value;
+  const lines = text.split('\n').map(l => l.replace(/^\s*\d+[\.\s]*/, '').trim()).filter(Boolean);
+  lines.forEach(title => songs.push({ id: Date.now() + Math.random(), title, lyric: '' }));
+  document.getElementById('batchSongs').value = '';
   save(); renderSongs();
 }
 function openLyric(id) {
