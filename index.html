@@ -51,6 +51,10 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"No
     <h3 style="margin:20px 0 8px;color:#1f497d">即將到來</h3>
     <div id="upcomingList"></div>
     <div id="monthOffCount" style="margin-top:12px;font-weight:bold;color:#ff6b6b"></div>
+    <div style="margin-top:20px;padding-top:12px;border-top:1px solid #eee">
+      <div style="font-size:13px;color:#666;margin-bottom:8px">快捷套用（點選後再點日期）</div>
+      <div id="quickBar" style="display:flex;gap:8px;flex-wrap:wrap"></div>
+    </div>
   </div>
 
   <div id="tab-settings" class="tab-content">
@@ -142,7 +146,16 @@ function renderCalendar() {
     const el = document.createElement('div');
     el.className = 'day' + (ds === todayStr ? ' today' : '');
     el.innerHTML = `<span style="position:absolute;top:4px;right:6px;font-size:0.85rem">${d}</span>`;
-    el.onclick = () => openEventModal(ds);
+    el.onclick = () => {
+      if (selectedQuick) {
+        // 直接套用到這一天
+        events.push({ id: Date.now(), name: selectedQuick.name, start: ds, end: ds, color: selectedQuick.color });
+        save();
+        renderCalendar();
+      } else {
+        openEventModal(ds);
+      }
+    };
     daysEl.appendChild(el);
     dayCells.push(ds);
 
@@ -170,9 +183,26 @@ function renderCalendar() {
 
   renderUpcoming();
   updateMonthOffCount();
+  renderQuickBar();
 }
 
-function renderUpcoming() {
+function renderQuickBar() {
+  const presets = [
+    { name: '休假', color: '#ff6b6b' },
+    { name: '出國', color: '#3b82f6' },
+    { name: '特休', color: '#10b981' },
+    { name: '補休', color: '#f59e0b' }
+  ];
+  const bar = document.getElementById('quickBar');
+  if (!bar) return;
+  bar.innerHTML = presets.map(p =>
+    `<button class="btn btn-sm" style="background:${p.color};color:#fff;opacity:${selectedQuick && selectedQuick.name===p.name?'1':'0.7'}" onclick="selectQuick('${p.name}','${p.color}')">${p.name}</button>`
+  ).join('') + `<button class="btn btn-sm btn-secondary" onclick="selectQuick(null)">取消</button>`;
+}
+function selectQuick(name, color) {
+  selectedQuick = name ? { name, color } : null;
+  renderQuickBar();
+}
   const el = document.getElementById('upcomingList');
   const today = formatDate(new Date());
   const items = events.filter(e => e.end >= today).sort((a,b) => a.start.localeCompare(b.start)).slice(0, 8);
