@@ -20,7 +20,7 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"No
 .month-nav h2{margin:0;color:#c55a11}
 .weekdays{display:grid;grid-template-columns:repeat(7,1fr);text-align:center;font-weight:600;color:#666;margin-bottom:6px}
 .days{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
-.day{aspect-ratio:1;border-radius:8px;display:flex;align-items:center;justify-content:center;cursor:pointer;background:#fff;font-size:.95rem;position:relative}
+.day{aspect-ratio:1;border-radius:8px;display:flex;align-items:center;justify-content:center;cursor:pointer;background:#fff;font-size:.95rem;position:relative;overflow:hidden}
 .day:hover{background:#f3f4f6}.day.other{color:#ccc;background:transparent}.day.today{box-shadow:inset 0 0 0 2px #c55a11;font-weight:700}
 .event-bar{position:absolute;left:4px;right:4px;height:14px;border-radius:7px;font-size:10px;font-weight:600;color:white;display:flex;align-items:center;justify-content:center;overflow:hidden;white-space:nowrap;padding:0 4px;pointer-events:none}
 .btn{padding:8px 14px;border:none;border-radius:8px;cursor:pointer;font-weight:700}
@@ -52,7 +52,7 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"No
     <div id="upcomingList"></div>
     <div id="monthOffCount" style="margin-top:12px;font-weight:bold;color:#ff6b6b"></div>
     <div style="margin-top:20px;padding-top:12px;border-top:1px solid #eee">
-      <div style="font-size:13px;color:#666;margin-bottom:8px">快捷套用（點選後再點日期）</div>
+      <div style="font-size:13px;color:#666;margin-bottom:8px">快捷套用 / 橡皮擦</div>
       <div id="quickBar" style="display:flex;gap:8px;flex-wrap:wrap"></div>
     </div>
   </div>
@@ -105,6 +105,7 @@ const dbRef = db.ref('leave_calendar_v1');
 let currentDate = new Date();
 let events = [];
 let selectedQuick = null;
+let eraserMode = false;
 const statusEl = document.getElementById('cloudSyncStatus');
 
 function loadLocal() { try { const data = JSON.parse(localStorage.getItem('leave_calendar_data') || '{}'); if (data.events) events = data.events; } catch(e) {} }
@@ -137,7 +138,7 @@ function renderCalendar() {
     const ds = formatDate(new Date(y, m, d));
     const el = document.createElement('div');
     el.className = 'day' + (ds === todayStr ? ' today' : '');
-    el.innerHTML = `<span style="position:absolute;top:4px;right:6px">${d}</span>`;
+    el.innerHTML = `<span style="position:absolute;top:4px;right:6px;z-index:3">${d}</span>`;
     el.onclick = () => {
       if (eraserMode) {
         events = events.filter(ev => !(ds >= ev.start && ds <= ev.end));
@@ -150,14 +151,16 @@ function renderCalendar() {
       }
     };
     daysEl.appendChild(el);
-    events.forEach((ev, idx) => {
+    let barIdx = 0;
+    events.forEach(ev => {
       if (ds >= ev.start && ds <= ev.end) {
         const bar = document.createElement('div');
         bar.className = 'event-bar';
         bar.style.background = ev.color || '#ff6b6b';
         bar.textContent = ev.name || '';
-        bar.style.bottom = (4 + idx * 16) + 'px';
+        bar.style.bottom = (4 + barIdx * 16) + 'px';
         el.appendChild(bar);
+        barIdx++;
       }
     });
   }
