@@ -29,7 +29,8 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"No
 .month-nav h2{margin:0;color:#c55a11}
 .weekdays{display:grid;grid-template-columns:repeat(7,1fr);text-align:center;font-weight:600;color:#666;margin-bottom:6px}
 .days{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
-.day{aspect-ratio:1;border-radius:8px;display:flex;align-items:center;justify-content:center;cursor:pointer;background:#fff;font-size:.95rem}
+.day{aspect-ratio:1;border-radius:8px;display:flex;align-items:center;justify-content:center;cursor:pointer;background:#fff;font-size:.95rem;position:relative}
+.leave-bar{position:absolute;bottom:6px;height:18px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:white;overflow:hidden;white-space:nowrap;padding:0 6px;z-index:2;pointer-events:none}
 .day:hover{background:#f3f4f6}.day.other{color:#ccc;background:transparent}.day.today{box-shadow:inset 0 0 0 2px #c55a11;font-weight:700}.day.has-leave{color:#fff;font-weight:600;position:relative}
 .leave-bar{position:absolute;bottom:4px;left:6px;right:6px;height:5px;border-radius:3px}
 .leave-types{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
@@ -149,8 +150,16 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"No
     <h3 id="modalDate" style="margin-top:0;color:#c55a11"></h3>
     <div id="modalTypes"></div>
     <div style="margin-top:12px">
+      <label>日期範圍（選填，不填則只套用當天）</label>
+      <div style="display:flex;gap:8px;margin-top:4px">
+        <input type="date" id="rangeStart" style="flex:1;padding:6px;border-radius:6px;border:1px solid #ddd">
+        <span style="align-self:center">到</span>
+        <input type="date" id="rangeEnd" style="flex:1;padding:6px;border-radius:6px;border:1px solid #ddd">
+      </div>
+    </div>
+    <div style="margin-top:12px">
       <label>當天事項（選填）</label>
-      <textarea id="dayNote" rows="3" style="width:100%;padding:8px;margin-top:4px;border-radius:6px;border:1px solid #ddd" placeholder="例如：上午看牙醫、下午出遊..."></textarea>
+      <textarea id="dayNote" rows="2" style="width:100%;padding:8px;margin-top:4px;border-radius:6px;border:1px solid #ddd" placeholder="例如：出國、看牙醫..."></textarea>
     </div>
     <div style="margin-top:16px;display:flex;gap:8px;justify-content:flex-end">
       <button class="btn btn-secondary" onclick="closeModal()">取消</button>
@@ -270,39 +279,76 @@ function renderCalendar() {
   const startWeek = first.getDay(), total = last.getDate();
   const daysEl = document.getElementById('days');
   daysEl.innerHTML = '';
+
+  // 收集本月所有日期的 leave 資訊
+  const dayInfos = [];
   const prevLast = new Date(y, m, 0).getDate();
   for (let i = startWeek-1; i >= 0; i--) {
-    const el = document.createElement('div'); el.className = 'day other'; el.textContent = prevLast - i; daysEl.appendChild(el);
+    dayInfos.push({ day: prevLast - i, other: true });
   }
   const todayStr = formatDate(new Date());
   for (let d = 1; d <= total; d++) {
-    const date = new Date(y, m, d), ds = formatDate(date);
-    const el = document.createElement('div'); el.className = 'day';
-    if (ds === todayStr) el.classList.add('today');
-    const typeId = leaves[ds];
-    if (typeId) {
-      const t = leaveTypes.find(x => x.id === typeId);
-      if (t) {
-        el.classList.add('has-leave');
-        el.style.background = t.color;
-        el.innerHTML = `<span>${d}</span><div class="leave-bar" style="background:${t.color}"></div>`;
-      }
-    } else {
-      const md = String(m+1).padStart(2,'0') + '-' + String(d).padStart(2,'0');
-      const rec = recurrings.find(r => r.monthDay === md);
-      if (rec) {
-        el.style.background = rec.color;
-        el.style.color = 'white';
-        el.innerHTML = `<span>${d}</span><div class="leave-bar" style="background:${rec.color}"></div>`;
-      } else el.textContent = d;
+    const ds = formatDate(new Date(y, m, d));
+    dayInfos.push({ day: d, date: ds, other: false, isToday: ds === todayStr, typeId: leaves[ds], note: dayNotes[ds] });
+  }
+  const remain = 42 - dayInfos.length;
+  for (let d = 1; d <= remain; d++) dayInfos.push({ day: d, other: true });
+
+  // 計算連續區塊
+  const ranges = [];
+  let current = null;
+  dayInfos.forEach((info, idx) => {
+    if (info.other || !info.typeId) {
+      if (current) { ranges.push(current); current = null; }
+      return;
     }
-    el.onclick = () => openLeaveModal(ds);
+    if (!current || current.typeId !== info.typeId) {
+      if (current) ranges.push(current);
+      current = { typeId: info.typeId, start: idx, end: idx, note: info.note || '' };
+    } else {
+      current.end = idx;
+      if (info.note) current.note = info.note;
+    }
+  });
+  if (current) ranges.push(current);
+
+  // 渲染格子
+  dayInfos.forEach((info, idx) => {
+    const el = document.createElement('div');
+    el.className = 'day' + (info.other ? ' other' : '') + (info.isToday ? ' today' : '');
+    if (!info.other && info.typeId) {
+      const t = leaveTypes.find(x => x.id === info.typeId);
+      if (t) { el.classList.add('has-leave'); el.style.background = t.color; }
+    }
+    el.textContent = info.day;
+    if (!info.other) el.onclick = () => openLeaveModal(info.date);
     daysEl.appendChild(el);
-  }
-  const remain = 42 - (startWeek + total);
-  for (let d = 1; d <= remain; d++) {
-    const el = document.createElement('div'); el.className = 'day other'; el.textContent = d; daysEl.appendChild(el);
-  }
+  });
+
+  // 畫連續色條
+  ranges.forEach(r => {
+    const t = leaveTypes.find(x => x.id === r.typeId);
+    if (!t) return;
+    const startEl = daysEl.children[r.start];
+    const endEl = daysEl.children[r.end];
+    if (!startEl || !endEl) return;
+    const bar = document.createElement('div');
+    bar.className = 'leave-bar';
+    bar.style.background = t.color;
+    bar.style.left = '4px';
+    bar.style.right = '4px';
+    bar.textContent = r.note || t.name;
+    // 計算跨格子位置
+    const startRect = startEl.getBoundingClientRect();
+    const endRect = endEl.getBoundingClientRect();
+    const parentRect = daysEl.getBoundingClientRect();
+    bar.style.left = (startRect.left - parentRect.left + 4) + 'px';
+    bar.style.width = (endRect.right - startRect.left - 8) + 'px';
+    bar.style.bottom = '6px';
+    daysEl.style.position = 'relative';
+    daysEl.appendChild(bar);
+  });
+
   renderLeaveTypes();
   renderUpcoming();
 }
@@ -341,6 +387,8 @@ function openLeaveModal(dateStr) {
   selectedTypeId = leaves[dateStr] || null;
   document.getElementById('modalDate').textContent = dateStr;
   document.getElementById('dayNote').value = dayNotes[dateStr] || '';
+  document.getElementById('rangeStart').value = dateStr;
+  document.getElementById('rangeEnd').value = dateStr;
   const typesEl = document.getElementById('modalTypes');
   typesEl.innerHTML = leaveTypes.map(t =>
     `<div class="leave-type-chip" style="background:${t.color};margin:4px;display:inline-block;opacity:${selectedTypeId===t.id?'1':'0.7'}" data-id="${t.id}">${t.emoji||''} ${t.name}</div>`
@@ -356,11 +404,32 @@ function openLeaveModal(dateStr) {
 }
 function selectModalType(id) { /* 已改用 onclick 綁定 */ }
 function confirmLeave() {
-  if (selectedTypeId) leaves[selectedDate] = selectedTypeId;
-  else delete leaves[selectedDate];
+  const start = document.getElementById('rangeStart').value;
+  const end = document.getElementById('rangeEnd').value;
   const note = document.getElementById('dayNote').value.trim();
-  if (note) dayNotes[selectedDate] = note;
-  else delete dayNotes[selectedDate];
+  const typeId = selectedTypeId;
+
+  if (!typeId && !note) { closeModal(); return; }
+
+  const dates = [];
+  if (start && end && start <= end) {
+    let d = new Date(start);
+    const endDate = new Date(end);
+    while (d <= endDate) {
+      dates.push(formatDate(d));
+      d.setDate(d.getDate() + 1);
+    }
+  } else {
+    dates.push(selectedDate);
+  }
+
+  dates.forEach(ds => {
+    if (typeId) leaves[ds] = typeId;
+    else delete leaves[ds];
+    if (note) dayNotes[ds] = note;
+    else delete dayNotes[ds];
+  });
+
   save(); closeModal(); renderCalendar();
 }
 function clearDay() {
