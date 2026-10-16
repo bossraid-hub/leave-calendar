@@ -61,27 +61,29 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"No
 <div class="modal-overlay" id="eventModal">
   <div class="modal-card">
     <h3 id="modalDate" style="margin-top:0;color:#c55a11"></h3>
-    <div style="margin-bottom:10px">
-      <label>快捷</label>
-      <div style="margin-top:4px">
+    <div style="margin-bottom:12px">
+      <label style="display:block;margin-bottom:6px">快捷</label>
+      <div>
         <button type="button" class="btn btn-sm" style="background:#ff6b6b;color:#fff;margin-right:6px" onclick="document.getElementById('eventName').value='休假';document.getElementById('eventColor').value='#ff6b6b'">休假</button>
         <button type="button" class="btn btn-sm" style="background:#3b82f6;color:#fff;margin-right:6px" onclick="document.getElementById('eventName').value='出國';document.getElementById('eventColor').value='#3b82f6'">出國</button>
         <button type="button" class="btn btn-sm" style="background:#10b981;color:#fff" onclick="document.getElementById('eventName').value='特休';document.getElementById('eventColor').value='#10b981'">特休</button>
       </div>
     </div>
-      <input type="text" id="eventName" placeholder="例如：休假、出國" style="width:100%;padding:8px;margin-top:4px;border-radius:6px;border:1px solid #ddd">
+    <div style="margin-bottom:12px">
+      <label style="display:block;margin-bottom:6px">事件名稱</label>
+      <input type="text" id="eventName" placeholder="例如：休假、出國" style="width:100%;padding:8px;border-radius:6px;border:1px solid #ddd">
     </div>
-    <div style="margin-bottom:10px">
-      <label>日期範圍</label>
-      <div style="display:flex;gap:8px;margin-top:4px">
+    <div style="margin-bottom:12px">
+      <label style="display:block;margin-bottom:6px">日期範圍</label>
+      <div style="display:flex;gap:8px;align-items:center">
         <input type="date" id="rangeStart" style="flex:1;padding:6px;border-radius:6px;border:1px solid #ddd">
-        <span style="align-self:center">到</span>
+        <span>到</span>
         <input type="date" id="rangeEnd" style="flex:1;padding:6px;border-radius:6px;border:1px solid #ddd">
       </div>
     </div>
     <div style="margin-bottom:16px">
-      <label>顏色</label><br>
-      <input type="color" id="eventColor" value="#ff6b6b" style="margin-top:4px;width:60px;height:36px;border:none;cursor:pointer">
+      <label style="display:block;margin-bottom:6px">顏色</label>
+      <input type="color" id="eventColor" value="#ff6b6b" style="width:60px;height:36px;border:none;cursor:pointer">
     </div>
     <div style="display:flex;gap:8px;justify-content:flex-end">
       <button class="btn btn-secondary" onclick="closeEventModal()">取消</button>
@@ -175,7 +177,7 @@ function renderCalendar() {
     const e = endEl.getBoundingClientRect();
     bar.style.left = (s.left - parent.left + 6) + 'px';
     bar.style.width = (e.right - s.left - 12) + 'px';
-    bar.style.top = '6px';
+    bar.style.top = '4px';
     daysEl.appendChild(bar);
   });
 
