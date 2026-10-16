@@ -11,7 +11,7 @@
 body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans TC",sans-serif;background:#1a1a1a;color:#222;min-height:100vh}
 #cloudSyncStatus{position:fixed;top:10px;right:15px;background:rgba(40,167,69,.9);color:#fff;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:700;z-index:1000}
 #cloudSyncStatus.syncing{background:rgba(255,193,7,.9);color:#333}
-.container{position:relative;z-index:2;max-width:900px;margin:40px auto;background:rgba(255,255,255,.88);padding:20px;border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.3);backdrop-filter:blur(8px)}
+.container{max-width:900px;margin:40px auto;background:rgba(255,255,255,.88);padding:20px;border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.3);backdrop-filter:blur(8px)}
 .tabs{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;border-bottom:2px solid rgba(0,0,0,.08);padding-bottom:8px}
 .tab-btn{padding:8px 14px;border:none;background:rgba(255,255,255,.8);border-radius:8px;cursor:pointer;font-weight:700}
 .tab-btn.active{background:#c55a11;color:#fff}
@@ -20,8 +20,9 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"No
 .month-nav h2{margin:0;color:#c55a11}
 .weekdays{display:grid;grid-template-columns:repeat(7,1fr);text-align:center;font-weight:600;color:#666;margin-bottom:6px}
 .days{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;position:relative}
-.day{aspect-ratio:1;border-radius:8px;display:flex;align-items:center;justify-content:center;cursor:pointer;background:#fff;font-size:.95rem}
+.day{aspect-ratio:1;border-radius:8px;display:flex;align-items:center;justify-content:center;cursor:pointer;background:#fff;font-size:.95rem;position:relative}
 .day:hover{background:#f3f4f6}.day.other{color:#ccc;background:transparent}.day.today{box-shadow:inset 0 0 0 2px #c55a11;font-weight:700}
+.event-bar{position:absolute;height:16px;border-radius:8px;font-size:10px;font-weight:600;color:white;display:flex;align-items:center;padding:0 6px;overflow:hidden;white-space:nowrap;z-index:2;pointer-events:none}
 .btn{padding:8px 14px;border:none;border-radius:8px;cursor:pointer;font-weight:700}
 .btn-primary{background:#c55a11;color:#fff}.btn-secondary{background:#6c757d;color:#fff}.btn-danger{background:#dc3545;color:#fff}.btn-sm{padding:6px 10px;font-size:13px}
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:2000}
@@ -53,7 +54,6 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"No
   </div>
 
   <div id="tab-settings" class="tab-content">
-    <p style="color:#666">背景功能暫時簡化，先確保月曆穩定運作。</p>
     <button class="btn btn-secondary" onclick="exportData()">匯出資料</button>
   </div>
 </div>
@@ -102,39 +102,16 @@ let currentDate = new Date();
 let events = [];
 const statusEl = document.getElementById('cloudSyncStatus');
 
-function loadLocal() {
-  try {
-    const data = JSON.parse(localStorage.getItem('leave_calendar_data') || '{}');
-    if (data.events) events = data.events;
-  } catch(e) {}
-}
-function saveLocal() {
-  try {
-    localStorage.setItem('leave_calendar_data', JSON.stringify({ events }));
-  } catch(e) {
-    localStorage.removeItem('leave_calendar_data');
-  }
-}
+function loadLocal() { try { const data = JSON.parse(localStorage.getItem('leave_calendar_data') || '{}'); if (data.events) events = data.events; } catch(e) {} }
+function saveLocal() { try { localStorage.setItem('leave_calendar_data', JSON.stringify({ events })); } catch(e) { localStorage.removeItem('leave_calendar_data'); } }
 function saveCloud() {
-  statusEl.textContent = '🔄 同步中...';
-  statusEl.className = 'syncing';
-  dbRef.set({ events }).then(() => {
-    statusEl.textContent = '☁️ 已同步';
-    statusEl.className = '';
-  }).catch(() => {
-    statusEl.textContent = '⚠️ 同步失敗';
-    statusEl.className = 'syncing';
-  });
+  statusEl.textContent = '🔄 同步中...'; statusEl.className = 'syncing';
+  dbRef.set({ events }).then(() => { statusEl.textContent = '☁️ 已同步'; statusEl.className = ''; }).catch(() => { statusEl.textContent = '⚠️ 同步失敗'; statusEl.className = 'syncing'; });
 }
 function save() { saveLocal(); saveCloud(); }
 
 loadLocal();
-dbRef.on('value', snap => {
-  const val = snap.val();
-  if (val && val.events) events = val.events;
-  statusEl.textContent = '☁️ 已連線';
-  renderCalendar();
-});
+dbRef.on('value', snap => { const val = snap.val(); if (val && val.events) events = val.events; statusEl.textContent = '☁️ 已連線'; renderCalendar(); });
 
 function formatDate(d) { return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
 
@@ -145,6 +122,7 @@ function renderCalendar() {
   const startWeek = first.getDay(), total = last.getDate();
   const daysEl = document.getElementById('days');
   daysEl.innerHTML = '';
+
   const dayCells = [];
   const prevLast = new Date(y, m, 0).getDate();
   for (let i = startWeek-1; i >= 0; i--) {
@@ -184,7 +162,7 @@ function renderCalendar() {
     const e = endEl.getBoundingClientRect();
     bar.style.left = (s.left - parent.left + 4) + 'px';
     bar.style.width = (e.right - s.left - 8) + 'px';
-    bar.style.top = '22px';
+    bar.style.top = '28px';
     daysEl.appendChild(bar);
   });
 
@@ -234,9 +212,7 @@ document.getElementById('saveEventBtn').onclick = function() {
   const color = document.getElementById('eventColor').value;
   if (!name || !start || !end) { alert('請填名稱與日期'); return; }
   events.push({ id: Date.now(), name, start, end, color });
-  save();
-  closeEventModal();
-  renderCalendar();
+  save(); closeEventModal(); renderCalendar();
 };
 
 function exportData() {
