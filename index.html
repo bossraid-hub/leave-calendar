@@ -169,7 +169,7 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"No
     <div style="display:flex;gap:8px;justify-content:flex-end">
       <button class="btn btn-secondary" onclick="closeEventModal()">取消</button>
       <button class="btn btn-danger" id="deleteEventBtn" style="display:none" onclick="deleteCurrentEvent()">刪除</button>
-      <button class="btn btn-primary" onclick="saveEvent()">儲存</button>
+      <button class="btn btn-primary" id="saveEventBtn">儲存</button>
     </div>
   </div>
 </div>
@@ -388,7 +388,14 @@ function openEventModal(dateStr, eventId) {
   });
   document.getElementById('eventModal').classList.add('active');
 }
-function closeEventModal() { document.getElementById('eventModal').classList.remove('active'); editingEventId = null; }
+document.getElementById('saveEventBtn').onclick = function() {
+  try {
+    saveEvent();
+  } catch (err) {
+    alert('儲存時發生錯誤：' + err.message);
+    console.error(err);
+  }
+};
 function saveEvent() {
   const name = document.getElementById('eventName').value.trim();
   const start = document.getElementById('rangeStart').value;
