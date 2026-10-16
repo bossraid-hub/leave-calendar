@@ -77,6 +77,7 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"No
     <button class="btn btn-sm btn-secondary" onclick="openLeaveManage()">管理類型</button>
     <h3 style="margin:20px 0 8px;color:#1f497d">即將到來</h3>
     <div id="upcomingList"></div>
+    <div id="monthOffCount" style="margin-top:16px;font-weight:bold;color:#ff6b6b"></div>
   </div>
 
   <div id="tab-recurring" class="tab-content">
@@ -204,7 +205,7 @@ let currentDate = new Date();
 let editingEventId = null;
 let leaveTypes = [
   { id: 'annual', name: '年假', color: '#10b981', emoji: '🌴' },
-  { id: 'off', name: '休假', color: '#6b7280', emoji: '😴' },
+  { id: 'off', name: '休假', color: '#ff6b6b', emoji: '😴' },
   { id: 'personal', name: '特休', color: '#3b82f6', emoji: '✨' },
   { id: 'comp', name: '補休', color: '#f59e0b', emoji: '🔄' }
 ];
@@ -318,6 +319,7 @@ function renderCalendar() {
 
   renderLeaveTypes();
   renderUpcoming();
+  updateMonthOffCount();
 }
 
 function renderLeaveTypes() {
@@ -325,7 +327,20 @@ function renderLeaveTypes() {
     `<div class="leave-type-chip" style="background:${t.color}">${t.emoji||''} ${t.name}</div>`
   ).join('');
 }
-function renderUpcoming() {
+function updateMonthOffCount() {
+  const y = currentDate.getFullYear(), m = currentDate.getMonth();
+  const monthStart = formatDate(new Date(y, m, 1));
+  const monthEnd = formatDate(new Date(y, m+1, 0));
+  let count = 0;
+  events.forEach(ev => {
+    if (ev.name === '休假' || ev.color === '#ff6b6b') {
+      let d = new Date(Math.max(new Date(ev.start), new Date(monthStart)));
+      const end = new Date(Math.min(new Date(ev.end), new Date(monthEnd)));
+      while (d <= end) { count++; d.setDate(d.getDate()+1); }
+    }
+  });
+  document.getElementById('monthOffCount').textContent = count ? `本月休假：${count} 天` : '';
+}
   const el = document.getElementById('upcomingList');
   const today = formatDate(new Date());
   const items = events.filter(e => e.end >= today).sort((a,b) => a.start.localeCompare(b.start)).slice(0, 8);
@@ -351,11 +366,18 @@ function openEventModal(dateStr, eventId) {
   document.getElementById('eventName').value = ev ? ev.name : '';
   document.getElementById('rangeStart').value = ev ? ev.start : dateStr;
   document.getElementById('rangeEnd').value = ev ? ev.end : dateStr;
-  document.getElementById('eventColor').value = ev ? ev.color : '#c55a11';
+  document.getElementById('eventColor').value = ev ? ev.color : '#ff6b6b';
   document.getElementById('deleteEventBtn').style.display = eventId ? 'inline-block' : 'none';
-  document.getElementById('modalTypes').innerHTML = leaveTypes.map(t =>
-    `<div class="leave-type-chip" style="background:${t.color};margin:4px;display:inline-block" onclick="document.getElementById('eventColor').value='${t.color}';document.getElementById('eventName').value=document.getElementById('eventName').value||'${t.name}'">${t.emoji||''} ${t.name}</div>`
+  const typesEl = document.getElementById('modalTypes');
+  typesEl.innerHTML = leaveTypes.map(t =>
+    `<div class="leave-type-chip" style="background:${t.color};margin:4px;display:inline-block" data-name="${t.name}" data-color="${t.color}">${t.emoji||''} ${t.name}</div>`
   ).join('');
+  typesEl.querySelectorAll('.leave-type-chip').forEach(el => {
+    el.onclick = () => {
+      document.getElementById('eventColor').value = el.getAttribute('data-color');
+      if (!document.getElementById('eventName').value) document.getElementById('eventName').value = el.getAttribute('data-name');
+    };
+  });
   document.getElementById('eventModal').classList.add('active');
 }
 function closeEventModal() { document.getElementById('eventModal').classList.remove('active'); editingEventId = null; }
@@ -387,11 +409,25 @@ function addLeaveType() {
   document.body.appendChild(modal);
 }
 function openLeaveManage() {
-  let html = leaveTypes.map((t, i) => `<div style="display:flex;align-items:center;gap:8px;margin:6px 0"><div class="leave-type-chip" style="background:${t.color};flex:1">${t.emoji||''} ${t.name}</div><button class="btn btn-sm btn-danger" onclick="leaveTypes.splice(${i},1);save();renderLeaveTypes();document.querySelector('.modal-overlay.active')?.remove();openLeaveManage();">刪除</button></div>`).join('');
+  let html = leaveTypes.map((t, i) => `
+    <div style="display:flex;align-items:center;gap:8px;margin:6px 0">
+      <div class="leave-type-chip" style="background:${t.color};flex:1">${t.emoji||''} ${t.name}</div>
+      <button class="btn btn-sm btn-danger" data-idx="${i}" onclick="deleteLeaveType(Number(this.dataset.idx))">刪除</button>
+    </div>
+  `).join('');
   const modal = document.createElement('div');
   modal.className = 'modal-overlay active';
   modal.innerHTML = `<div class="modal-card" style="max-width:420px"><h3 style="margin-top:0;color:#c55a11">管理類型</h3>${html}<div style="margin-top:16px;text-align:right"><button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">關閉</button></div></div>`;
   document.body.appendChild(modal);
+}
+function deleteLeaveType(i) {
+  if (confirm('刪除「' + leaveTypes[i].name + '」？')) {
+    leaveTypes.splice(i, 1);
+    save();
+    renderLeaveTypes();
+    document.querySelector('.modal-overlay.active')?.remove();
+    openLeaveManage();
+  }
 }
 
 function openRecurringModal() { document.getElementById('recurringModal').classList.add('active'); }
