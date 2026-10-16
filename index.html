@@ -187,12 +187,7 @@ function renderCalendar() {
           save(); renderCalendar();
           return;
         }
-        // 多個事件，讓使用者選擇
-        const choice = prompt('這天有多個事件，請輸入要刪除的事件名稱：\n' + dayEvs.map(e => e.name).join('、'));
-        if (choice) {
-          events = events.filter(ev => !(ds >= ev.start && ds <= ev.end && ev.name === choice));
-          save(); renderCalendar();
-        }
+        showEraserPicker(ds, dayEvs);
       } else if (selectedQuick) {
         events.push({ id: Date.now(), name: selectedQuick.name, start: ds, end: ds, color: selectedQuick.color });
         save(); renderCalendar();
