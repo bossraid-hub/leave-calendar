@@ -508,9 +508,11 @@ function renderSongs() {
   `).join('');
 }
 function addSong() {
-  const title = prompt('歌曲名稱');
+  const input = document.getElementById('newSongName');
+  const title = input.value.trim();
   if (!title) return;
   songs.push({ id: Date.now(), title, lyric: '' });
+  input.value = '';
   save(); renderSongs();
 }
 function openLyric(id) {
