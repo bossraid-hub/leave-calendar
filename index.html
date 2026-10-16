@@ -577,18 +577,39 @@ function setSide(side) {
   }
 }
 
-// 檔案上傳
-document.getElementById('bgFileInput').onchange = e => {
-  const f = e.target.files[0]; if (!f) return;
-  const r = new FileReader();
-  r.onload = ev => { bgImages.push(ev.target.result); save(); updateGalleries(); };
-  r.readAsDataURL(f);
+// 檔案上傳（改善版，跟原本計算機類似）
+document.getElementById('bgFileInput').onchange = function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  if (file.size > 800 * 1024) {
+    alert('檔案太大（超過 800KB），建議改用圖片網址，否則可能無法雲端同步');
+  }
+  const reader = new FileReader();
+  reader.onload = function(event) {
+    bgImages.push(event.target.result);
+    save();
+    updateGalleries();
+    e.target.value = '';
+    alert('側邊相冊已新增');
+  };
+  reader.readAsDataURL(file);
 };
-document.getElementById('bannerFileInput').onchange = e => {
-  const f = e.target.files[0]; if (!f) return;
-  const r = new FileReader();
-  r.onload = ev => { bannerImages.push(ev.target.result); save(); updateGalleries(); };
-  r.readAsDataURL(f);
+
+document.getElementById('bannerFileInput').onchange = function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  if (file.size > 800 * 1024) {
+    alert('檔案太大（超過 800KB），建議改用圖片網址，否則可能無法雲端同步');
+  }
+  const reader = new FileReader();
+  reader.onload = function(event) {
+    bannerImages.push(event.target.result);
+    save();
+    updateGalleries();
+    e.target.value = '';
+    alert('頂部橫幅已新增');
+  };
+  reader.readAsDataURL(file);
 };
 
 // 匯出匯入
