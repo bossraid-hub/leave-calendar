@@ -43,8 +43,10 @@
   .modal-card { background: white; width: 90%; max-width: 420px; border-radius: 12px; padding: 20px; max-height: 90vh; overflow-y: auto; }
   .bg-setting-panel { background: rgba(255,255,255,0.9); padding: 12px; border-radius: 10px; margin-bottom: 12px; }
   .bg-thumbs { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
-  .bg-thumb-item { width: 70px; height: 50px; border-radius: 6px; overflow: hidden; border: 2px solid transparent; }
-  .bg-thumb-item img { width: 100%; height: 100%; object-fit: cover; }
+  .bg-thumb-item { width: 70px; height: 50px; border-radius: 6px; overflow: hidden; border: 2px solid transparent; position: relative; }
+  .bg-thumb-item.active { border-color: #c55a11; }
+  .bg-thumb-item img { width: 100%; height: 100%; object-fit: cover; cursor: pointer; }
+  .bg-thumb-del { position: absolute; top: 2px; right: 2px; background: rgba(220,53,69,0.85); color: white; border: none; border-radius: 50%; width: 18px; height: 18px; font-size: 10px; cursor: pointer; }
 </style>
 </head>
 <body>
@@ -91,34 +93,30 @@
       <input type="file" id="bgFileInput" accept="image/*" style="margin:8px 0; width:100%;">
       <div style="display:flex; gap:8px;">
         <input type="text" id="bgUrlInput" placeholder="或貼圖片網址" style="flex:1; padding:6px;">
-        <button class="btn btn-sm btn-secondary" onclick="addBgUrl()">新增</button>
+        <button class="btn btn-sm btn-secondary" id="btnAddBgUrl">新增</button>
       </div>
-      <div class="bg-thumbs" id="bgThumbs"></div>
+      <div class="bg-thumbs" id="bgThumbsContainer"></div>
     </div>
     <div class="bg-setting-panel">
       <strong>頂部橫幅</strong>
       <input type="file" id="bannerFileInput" accept="image/*" style="margin:8px 0; width:100%;">
       <div style="display:flex; gap:8px;">
         <input type="text" id="bannerUrlInput" placeholder="或貼圖片網址" style="flex:1; padding:6px;">
-        <button class="btn btn-sm btn-secondary" onclick="addBannerUrl()">新增</button>
+        <button class="btn btn-sm btn-secondary" id="btnAddBannerUrl">新增</button>
       </div>
-      <div class="bg-thumbs" id="bannerThumbs"></div>
+      <div class="bg-thumbs" id="bannerThumbsContainer"></div>
     </div>
     <div class="bg-setting-panel">
-      <strong>左右大背景</strong>
-      <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:8px;">
-        <div>
-          左側<br>
-          <input type="file" id="leftSideFile" accept="image/*" style="width:100%; margin:4px 0;">
-          <input type="text" id="leftSideUrl" placeholder="網址" style="width:100%; padding:6px;">
-          <button class="btn btn-sm btn-secondary" onclick="setSide('left')">套用左</button>
-        </div>
-        <div>
-          右側<br>
-          <input type="file" id="rightSideFile" accept="image/*" style="width:100%; margin:4px 0;">
-          <input type="text" id="rightSideUrl" placeholder="網址" style="width:100%; padding:6px;">
-          <button class="btn btn-sm btn-secondary" onclick="setSide('right')">套用右</button>
-        </div>
+      <strong>輪播設定</strong>
+      <label style="cursor:pointer;"><input type="checkbox" id="slideshowToggle"> 啟用自動輪播</label>
+      <div style="margin-top:8px;">
+        切換間隔：
+        <select id="slideshowInterval" style="width:120px; padding:4px;">
+          <option value="5000">每 5 秒</option>
+          <option value="10000" selected>每 10 秒</option>
+          <option value="30000">每 30 秒</option>
+          <option value="60000">每 1 分鐘</option>
+        </select>
       </div>
     </div>
     <div style="margin-top:16px;">
@@ -129,48 +127,22 @@
   </div>
 </div>
 
-<div class="modal-overlay" id="leaveModal">
-  <div class="modal-card">
-    <h3 id="modalDate" style="margin-top:0; color:#c55a11;"></h3>
-    <div id="modalTypes"></div>
-    <div style="margin-top:16px; display:flex; gap:8px; justify-content:flex-end;">
-      <button class="btn btn-secondary" onclick="closeModal()">取消</button>
-      <button class="btn btn-danger" onclick="clearDay()">清除</button>
-      <button class="btn btn-primary" onclick="confirmLeave()">確定</button>
-    </div>
-  </div>
-</div>
-
-<div class="modal-overlay" id="recurringModal">
-  <div class="modal-card">
-    <h3 style="margin-top:0; color:#c55a11;">新增週期性事件</h3>
-    <div style="margin-bottom:10px;"><label>名稱</label><br><input type="text" id="recName" placeholder="例如：生日、結婚紀念日" style="width:100%; padding:8px; margin-top:4px;"></div>
-    <div style="margin-bottom:10px;"><label>日期（月-日）</label><br><input type="text" id="recMonthDay" placeholder="例如：03-15" style="width:100%; padding:8px; margin-top:4px;"></div>
-    <div style="margin-bottom:10px;"><label>顏色</label><br><input type="color" id="recColor" value="#ec4899" style="margin-top:4px;"></div>
-    <div style="display:flex; gap:8px; justify-content:flex-end;">
-      <button class="btn btn-secondary" onclick="closeRecurringModal()">取消</button>
-      <button class="btn btn-primary" onclick="saveRecurring()">儲存</button>
-    </div>
-  </div>
-</div>
+<div class="modal-overlay" id="leaveModal"><div class="modal-card"><h3 id="modalDate" style="margin-top:0; color:#c55a11;"></h3><div id="modalTypes"></div><div style="margin-top:16px; display:flex; gap:8px; justify-content:flex-end;"><button class="btn btn-secondary" onclick="closeModal()">取消</button><button class="btn btn-danger" onclick="clearDay()">清除</button><button class="btn btn-primary" onclick="confirmLeave()">確定</button></div></div></div>
+<div class="modal-overlay" id="recurringModal"><div class="modal-card"><h3 style="margin-top:0; color:#c55a11;">新增週期性事件</h3><div style="margin-bottom:10px;"><label>名稱</label><br><input type="text" id="recName" placeholder="例如：生日" style="width:100%; padding:8px; margin-top:4px;"></div><div style="margin-bottom:10px;"><label>日期（月-日）</label><br><input type="text" id="recMonthDay" placeholder="例如：03-15" style="width:100%; padding:8px; margin-top:4px;"></div><div style="margin-bottom:10px;"><label>顏色</label><br><input type="color" id="recColor" value="#ec4899" style="margin-top:4px;"></div><div style="display:flex; gap:8px; justify-content:flex-end;"><button class="btn btn-secondary" onclick="closeRecurringModal()">取消</button><button class="btn btn-primary" onclick="saveRecurring()">儲存</button></div></div></div>
 
 <script>
-const USE_FIREBASE = true;
-let db = null, dbRef = null;
-if (USE_FIREBASE) {
-  const firebaseConfig = {
-    apiKey: "AIzaSyC-U8AEP7VymgBnaQ8DrrAuGWbrF6I8peE",
-    authDomain: "maple-calculator-a35a4.firebaseapp.com",
-    databaseURL: "https://maple-calculator-a35a4-default-rtdb.asia-southeast1.firebasedatabase.app",
-    projectId: "maple-calculator-a35a4",
-    storageBucket: "maple-calculator-a35a4.firebasestorage.app",
-    messagingSenderId: "710154244131",
-    appId: "1:710154244131:web:582d7a622e953596432196"
-  };
-  firebase.initializeApp(firebaseConfig);
-  db = firebase.database();
-  dbRef = db.ref('leave_calendar_v1');
-}
+const firebaseConfig = {
+  apiKey: "AIzaSyC-U8AEP7VymgBnaQ8DrrAuGWbrF6I8peE",
+  authDomain: "maple-calculator-a35a4.firebaseapp.com",
+  databaseURL: "https://maple-calculator-a35a4-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "maple-calculator-a35a4",
+  storageBucket: "maple-calculator-a35a4.firebasestorage.app",
+  messagingSenderId: "710154244131",
+  appId: "1:710154244131:web:582d7a622e953596432196"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+const dbRef = db.ref('leave_calendar_v1');
 
 let currentDate = new Date();
 let selectedDate = null;
@@ -183,10 +155,16 @@ let leaveTypes = [
 ];
 let leaves = {};
 let recurrings = [];
+
+// 背景資料（照原本網站）
 let bgImages = [];
 let bannerImages = [];
-let sideLeft = '';
-let sideRight = '';
+let slideshowActive = false;
+let slideshowTime = 10000;
+let currentBgIndex = 0;
+let currentBannerIndex = 0;
+let slideshowTimer = null;
+
 const statusEl = document.getElementById('cloudSyncStatus');
 
 function loadLocal() {
@@ -197,45 +175,44 @@ function loadLocal() {
     if (data.recurrings) recurrings = data.recurrings;
     if (data.bgImages) bgImages = data.bgImages;
     if (data.bannerImages) bannerImages = data.bannerImages;
-    if (data.sideLeft) sideLeft = data.sideLeft;
-    if (data.sideRight) sideRight = data.sideRight;
+    if (data.slideshowActive !== undefined) slideshowActive = data.slideshowActive;
+    if (data.slideshowTime) slideshowTime = data.slideshowTime;
   } catch(e) {}
 }
 function saveLocal() {
-  localStorage.setItem('leave_calendar_data', JSON.stringify({ leaveTypes, leaves, recurrings, bgImages, bannerImages, sideLeft, sideRight }));
+  localStorage.setItem('leave_calendar_data', JSON.stringify({
+    leaveTypes, leaves, recurrings, bgImages, bannerImages, slideshowActive, slideshowTime
+  }));
 }
 function saveCloud() {
-  if (!dbRef) return;
   statusEl.textContent = '🔄 同步中...';
   statusEl.className = 'syncing';
-  dbRef.set({ leaveTypes, leaves, recurrings, bgImages, bannerImages, sideLeft, sideRight }).then(() => {
+  dbRef.set({ leaveTypes, leaves, recurrings, bgImages, bannerImages, slideshowActive, slideshowTime }).then(() => {
     statusEl.textContent = '☁️ 已同步';
     statusEl.className = '';
   }).catch(() => {
-    statusEl.textContent = '⚠️ 同步失敗（檔案可能太大）';
+    statusEl.textContent = '⚠️ 同步失敗';
     statusEl.className = 'syncing';
   });
 }
-function save() { saveLocal(); if (USE_FIREBASE) saveCloud(); }
+function save() { saveLocal(); saveCloud(); }
 
 loadLocal();
-if (USE_FIREBASE && dbRef) {
-  dbRef.on('value', snap => {
-    const val = snap.val();
-    if (val) {
-      leaveTypes = val.leaveTypes || leaveTypes;
-      leaves = val.leaves || leaves;
-      recurrings = val.recurrings || recurrings;
-      bgImages = val.bgImages || bgImages;
-      bannerImages = val.bannerImages || bannerImages;
-      sideLeft = val.sideLeft || sideLeft;
-      sideRight = val.sideRight || sideRight;
-      saveLocal();
-      renderAll();
-    }
-    statusEl.textContent = '☁️ 已連線';
-  });
-}
+dbRef.on('value', snap => {
+  const val = snap.val();
+  if (val) {
+    leaveTypes = val.leaveTypes || leaveTypes;
+    leaves = val.leaves || leaves;
+    recurrings = val.recurrings || recurrings;
+    bgImages = val.bgImages || bgImages;
+    bannerImages = val.bannerImages || bannerImages;
+    slideshowActive = val.slideshowActive || false;
+    slideshowTime = val.slideshowTime || 10000;
+    saveLocal();
+    renderAll();
+  }
+  statusEl.textContent = '☁️ 已連線';
+});
 
 function formatDate(d) { return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
 
@@ -337,61 +314,133 @@ function saveRecurring() {
 }
 function deleteRecurring(i) { if (confirm('刪除？')) { recurrings.splice(i, 1); save(); renderRecurring(); renderCalendar(); } }
 
-function updateGalleries() {
-  const left = document.getElementById('leftGalleryImg');
-  const right = document.getElementById('rightGalleryImg');
-  const top = document.getElementById('topBannerImg');
-  if (bgImages.length) { left.src = right.src = bgImages[bgImages.length-1]; }
-  if (bannerImages.length) top.src = bannerImages[bannerImages.length-1];
-  if (sideLeft) document.getElementById('fullSideLeft').style.backgroundImage = `url('${sideLeft}')`;
-  if (sideRight) document.getElementById('fullSideRight').style.backgroundImage = `url('${sideRight}')`;
-  renderThumbs();
+// ========== 背景系統（照原本網站） ==========
+function updateGalleryDisplay() {
+  const leftImg = document.getElementById('leftGalleryImg');
+  const rightImg = document.getElementById('rightGalleryImg');
+  const topImg = document.getElementById('topBannerImg');
+
+  if (bgImages.length > 0) {
+    currentBgIndex = currentBgIndex % bgImages.length;
+    leftImg.src = rightImg.src = bgImages[currentBgIndex];
+  } else {
+    leftImg.src = rightImg.src = "";
+  }
+  if (bannerImages.length > 0) {
+    currentBannerIndex = currentBannerIndex % bannerImages.length;
+    topImg.src = bannerImages[currentBannerIndex];
+  } else {
+    topImg.src = "";
+  }
+  renderThumbnails();
 }
-function renderThumbs() {
-  document.getElementById('bgThumbs').innerHTML = bgImages.map(url => `<div class="bg-thumb-item"><img src="${url}"></div>`).join('');
-  document.getElementById('bannerThumbs').innerHTML = bannerImages.map(url => `<div class="bg-thumb-item"><img src="${url}"></div>`).join('');
+
+function renderThumbnails() {
+  const bgThumbs = document.getElementById('bgThumbsContainer');
+  bgThumbs.innerHTML = bgImages.map((url, i) => `
+    <div class="bg-thumb-item ${i === currentBgIndex ? 'active' : ''}">
+      <img src="${url}" data-bidx="${i}" class="click-bg-thumb">
+      <button class="bg-thumb-del del-bg-btn" data-bidx="${i}">✕</button>
+    </div>
+  `).join('');
+
+  const bannerThumbs = document.getElementById('bannerThumbsContainer');
+  bannerThumbs.innerHTML = bannerImages.map((url, i) => `
+    <div class="bg-thumb-item ${i === currentBannerIndex ? 'active' : ''}">
+      <img src="${url}" data-banidx="${i}" class="click-banner-thumb">
+      <button class="bg-thumb-del del-banner-btn" data-banidx="${i}">✕</button>
+    </div>
+  `).join('');
+
+  document.querySelectorAll('.click-bg-thumb').forEach(img => {
+    img.onclick = function() { currentBgIndex = Number(this.getAttribute('data-bidx')); updateGalleryDisplay(); };
+  });
+  document.querySelectorAll('.del-bg-btn').forEach(btn => {
+    btn.onclick = function(e) {
+      e.stopPropagation();
+      const idx = Number(this.getAttribute('data-bidx'));
+      bgImages.splice(idx, 1);
+      if (currentBgIndex >= bgImages.length) currentBgIndex = 0;
+      save(); updateGalleryDisplay();
+    };
+  });
+
+  document.querySelectorAll('.click-banner-thumb').forEach(img => {
+    img.onclick = function() { currentBannerIndex = Number(this.getAttribute('data-banidx')); updateGalleryDisplay(); };
+  });
+  document.querySelectorAll('.del-banner-btn').forEach(btn => {
+    btn.onclick = function(e) {
+      e.stopPropagation();
+      const idx = Number(this.getAttribute('data-banidx'));
+      bannerImages.splice(idx, 1);
+      if (currentBannerIndex >= bannerImages.length) currentBannerIndex = 0;
+      save(); updateGalleryDisplay();
+    };
+  });
+
+  document.getElementById('slideshowToggle').checked = slideshowActive;
+  document.getElementById('slideshowInterval').value = slideshowTime;
+  setupSlideshowTimer();
 }
-function addBgUrl() {
-  const url = document.getElementById('bgUrlInput').value.trim();
-  if (url) { bgImages.push(url); save(); updateGalleries(); document.getElementById('bgUrlInput').value=''; }
-}
-function addBannerUrl() {
-  const url = document.getElementById('bannerUrlInput').value.trim();
-  if (url) { bannerImages.push(url); save(); updateGalleries(); document.getElementById('bannerUrlInput').value=''; }
-}
-function setSide(side) {
-  const url = document.getElementById(side+'SideUrl').value.trim();
-  if (url) {
-    if (side === 'left') sideLeft = url; else sideRight = url;
-    save(); updateGalleries(); document.getElementById(side+'SideUrl').value = '';
+
+function setupSlideshowTimer() {
+  if (slideshowTimer) clearInterval(slideshowTimer);
+  if (slideshowActive) {
+    slideshowTimer = setInterval(() => {
+      if (bgImages.length > 0) currentBgIndex = (currentBgIndex + 1) % bgImages.length;
+      if (bannerImages.length > 0) currentBannerIndex = (currentBannerIndex + 1) % bannerImages.length;
+      updateGalleryDisplay();
+    }, slideshowTime);
   }
 }
 
-function handleFileUpload(inputId, callback, successMsg) {
-  document.getElementById(inputId).onchange = function(e) {
-    const file = e.target.files[0];
-    if (!file) return;
-    if (file.size > 700 * 1024) {
-      alert('檔案偏大，建議改用圖片網址以確保雲端同步成功');
-    }
-    const reader = new FileReader();
-    reader.onload = function(event) {
-      callback(event.target.result);
-      save();
-      updateGalleries();
-      e.target.value = '';
-      alert(successMsg);
-    };
-    reader.readAsDataURL(file);
+document.getElementById('slideshowToggle').onchange = function() {
+  slideshowActive = this.checked;
+  save();
+  setupSlideshowTimer();
+};
+document.getElementById('slideshowInterval').onchange = function() {
+  slideshowTime = Number(this.value);
+  save();
+  setupSlideshowTimer();
+};
+
+document.getElementById('bgFileInput').onchange = function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(event) {
+    bgImages.push(event.target.result);
+    save();
+    updateGalleryDisplay();
+    e.target.value = '';
   };
-}
-handleFileUpload('bgFileInput', (data) => bgImages.push(data), '側邊相冊已新增');
-handleFileUpload('bannerFileInput', (data) => bannerImages.push(data), '頂部橫幅已新增');
-handleFileUpload('leftSideFile', (data) => sideLeft = data, '左側大背景已套用');
-handleFileUpload('rightSideFile', (data) => sideRight = data, '右側大背景已套用');
+  reader.readAsDataURL(file);
+};
+document.getElementById('btnAddBgUrl').onclick = function() {
+  const url = document.getElementById('bgUrlInput').value.trim();
+  if (url) { bgImages.push(url); save(); updateGalleryDisplay(); document.getElementById('bgUrlInput').value = ''; }
+};
+
+document.getElementById('bannerFileInput').onchange = function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(event) {
+    bannerImages.push(event.target.result);
+    save();
+    updateGalleryDisplay();
+    e.target.value = '';
+  };
+  reader.readAsDataURL(file);
+};
+document.getElementById('btnAddBannerUrl').onclick = function() {
+  const url = document.getElementById('bannerUrlInput').value.trim();
+  if (url) { bannerImages.push(url); save(); updateGalleryDisplay(); document.getElementById('bannerUrlInput').value = ''; }
+};
 
 function exportData() {
-  const blob = new Blob([JSON.stringify({leaveTypes, leaves, recurrings, bgImages, bannerImages, sideLeft, sideRight}, null, 2)], {type:'application/json'});
+  const blob = new Blob([JSON.stringify({leaveTypes, leaves, recurrings, bgImages, bannerImages, slideshowActive, slideshowTime}, null, 2)], {type:'application/json'});
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = '排假資料.json'; a.click();
 }
 function importData(e) {
@@ -402,14 +451,14 @@ function importData(e) {
       const d = JSON.parse(r.result);
       leaveTypes = d.leaveTypes || leaveTypes; leaves = d.leaves || leaves; recurrings = d.recurrings || recurrings;
       bgImages = d.bgImages || bgImages; bannerImages = d.bannerImages || bannerImages;
-      sideLeft = d.sideLeft || sideLeft; sideRight = d.sideRight || sideRight;
+      slideshowActive = d.slideshowActive || false; slideshowTime = d.slideshowTime || 10000;
       save(); renderAll(); alert('匯入成功');
     } catch { alert('格式錯誤'); }
   };
   r.readAsText(f);
 }
 
-function renderAll() { renderCalendar(); renderRecurring(); updateGalleries(); }
+function renderAll() { renderCalendar(); renderRecurring(); updateGalleryDisplay(); }
 
 document.querySelectorAll('.tab-btn').forEach(btn => {
   btn.onclick = () => {
