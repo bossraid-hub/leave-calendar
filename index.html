@@ -72,7 +72,7 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"No
     <h3 id="modalDate" style="margin-top:0;color:#c55a11"></h3>
     <div id="dayEvents" style="margin-bottom:12px"></div>
     <div style="margin-bottom:12px">
-      <label style="display:block;margin-bottom:6px">新增 / 編輯事件</label>
+      <label style="display:block;margin-bottom:6px">新增事件</label>
       <input type="text" id="eventName" placeholder="事件名稱" style="width:100%;padding:8px;border-radius:6px;border:1px solid #ddd;margin-bottom:6px">
       <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
         <input type="date" id="rangeStart" style="flex:1;padding:6px;border-radius:6px;border:1px solid #ddd">
@@ -87,7 +87,7 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"No
     </div>
     <div style="display:flex;gap:8px;justify-content:flex-end">
       <button class="btn btn-secondary" onclick="closeEventModal()">關閉</button>
-      <button class="btn btn-primary" id="saveEventBtn" onclick="saveDayEvent()">儲存</button>
+      <button class="btn btn-primary" onclick="saveDayEvent()">儲存</button>
     </div>
   </div>
 </div>
@@ -185,9 +185,9 @@ function renderCalendar() {
         if (dayEvs.length === 1) {
           events = events.filter(ev => ev.id !== dayEvs[0].id);
           save(); renderCalendar();
-          return;
+        } else {
+          showEraserPicker(ds, dayEvs);
         }
-        showEraserPicker(ds, dayEvs);
       } else if (selectedQuick) {
         events.push({ id: Date.now(), name: selectedQuick.name, start: ds, end: ds, color: selectedQuick.color });
         save(); renderCalendar();
@@ -203,6 +203,18 @@ function renderCalendar() {
         bar.className = 'event-bar';
         bar.style.background = ev.color || '#ff6b6b';
         bar.textContent = ev.name || '';
+        bar.style.bottom = (4 + barIdx * 16) + 'px';
+        el.appendChild(bar);
+        barIdx++;
+      }
+    });
+    const md = ds.slice(5);
+    recurrings.forEach(r => {
+      if (r.monthDay === md) {
+        const bar = document.createElement('div');
+        bar.className = 'event-bar';
+        bar.style.background = r.color || '#ec4899';
+        bar.textContent = r.name || '';
         bar.style.bottom = (4 + barIdx * 16) + 'px';
         el.appendChild(bar);
         barIdx++;
@@ -239,6 +251,33 @@ function toggleEraser() {
   eraserMode = !eraserMode;
   selectedQuick = null;
   renderQuickBar();
+}
+function showEraserPicker(dateStr, dayEvs) {
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay active';
+  let html = dayEvs.map(ev => `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid #eee">
+      <span style="color:${ev.color}">● ${ev.name}</span>
+      <button class="btn btn-sm btn-danger" data-id="${ev.id}">刪除</button>
+    </div>
+  `).join('');
+  modal.innerHTML = `
+    <div class="modal-card" style="max-width:360px">
+      <h3 style="margin-top:0;color:#c55a11">${dateStr} 刪除事件</h3>
+      ${html}
+      <div style="margin-top:16px;text-align:right">
+        <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">取消</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+  modal.querySelectorAll('[data-id]').forEach(btn => {
+    btn.onclick = () => {
+      const id = Number(btn.getAttribute('data-id'));
+      events = events.filter(e => e.id !== id);
+      save(); renderCalendar();
+      modal.remove();
+    };
+  });
 }
 
 function updateMonthOffCount() {
