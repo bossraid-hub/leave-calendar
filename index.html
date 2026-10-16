@@ -30,7 +30,8 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"No
 .weekdays{display:grid;grid-template-columns:repeat(7,1fr);text-align:center;font-weight:600;color:#666;margin-bottom:6px}
 .days{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
 .day{aspect-ratio:1;border-radius:8px;display:flex;align-items:center;justify-content:center;cursor:pointer;background:#fff;font-size:.95rem}
-.day:hover{background:#f3f4f6}.day.other{color:#ccc;background:transparent}.day.today{box-shadow:inset 0 0 0 2px #c55a11;font-weight:700}.day.has-leave{color:#fff;font-weight:600}
+.day:hover{background:#f3f4f6}.day.other{color:#ccc;background:transparent}.day.today{box-shadow:inset 0 0 0 2px #c55a11;font-weight:700}.day.has-leave{color:#fff;font-weight:600;position:relative}
+.leave-bar{position:absolute;bottom:4px;left:6px;right:6px;height:5px;border-radius:3px}
 .leave-types{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
 .leave-type-chip{padding:6px 12px;border-radius:20px;color:#fff;font-size:13px;cursor:pointer;font-weight:500}
 .upcoming-item,.recurring-item{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #eee}
@@ -281,12 +282,19 @@ function renderCalendar() {
     const typeId = leaves[ds];
     if (typeId) {
       const t = leaveTypes.find(x => x.id === typeId);
-      if (t) { el.classList.add('has-leave'); el.style.background = t.color; el.textContent = d; }
+      if (t) {
+        el.classList.add('has-leave');
+        el.style.background = t.color;
+        el.innerHTML = `<span>${d}</span><div class="leave-bar" style="background:${t.color}"></div>`;
+      }
     } else {
       const md = String(m+1).padStart(2,'0') + '-' + String(d).padStart(2,'0');
       const rec = recurrings.find(r => r.monthDay === md);
-      if (rec) { el.style.background = rec.color; el.style.color = 'white'; el.textContent = d; }
-      else el.textContent = d;
+      if (rec) {
+        el.style.background = rec.color;
+        el.style.color = 'white';
+        el.innerHTML = `<span>${d}</span><div class="leave-bar" style="background:${rec.color}"></div>`;
+      } else el.textContent = d;
     }
     el.onclick = () => openLeaveModal(ds);
     daysEl.appendChild(el);
@@ -333,12 +341,20 @@ function openLeaveModal(dateStr) {
   selectedTypeId = leaves[dateStr] || null;
   document.getElementById('modalDate').textContent = dateStr;
   document.getElementById('dayNote').value = dayNotes[dateStr] || '';
-  document.getElementById('modalTypes').innerHTML = leaveTypes.map(t =>
-    `<div class="leave-type-chip" style="background:${t.color};margin:4px;display:inline-block;opacity:${selectedTypeId===t.id?'1':'0.7'}" onclick="selectModalType('${t.id}')">${t.emoji||''} ${t.name}</div>`
+  const typesEl = document.getElementById('modalTypes');
+  typesEl.innerHTML = leaveTypes.map(t =>
+    `<div class="leave-type-chip" style="background:${t.color};margin:4px;display:inline-block;opacity:${selectedTypeId===t.id?'1':'0.7'}" data-id="${t.id}">${t.emoji||''} ${t.name}</div>`
   ).join('');
+  typesEl.querySelectorAll('.leave-type-chip').forEach(el => {
+    el.onclick = () => {
+      selectedTypeId = el.getAttribute('data-id');
+      typesEl.querySelectorAll('.leave-type-chip').forEach(c => c.style.opacity = '0.7');
+      el.style.opacity = '1';
+    };
+  });
   document.getElementById('leaveModal').classList.add('active');
 }
-function selectModalType(id) { selectedTypeId = id; openLeaveModal(selectedDate); }
+function selectModalType(id) { /* 已改用 onclick 綁定 */ }
 function confirmLeave() {
   if (selectedTypeId) leaves[selectedDate] = selectedTypeId;
   else delete leaves[selectedDate];
@@ -388,8 +404,8 @@ function openLeaveManage() {
   let html = leaveTypes.map((t, i) => `
     <div style="display:flex;align-items:center;gap:8px;margin:6px 0">
       <div class="leave-type-chip" style="background:${t.color};flex:1">${t.emoji||''} ${t.name}</div>
-      <button class="btn btn-sm btn-secondary" onclick="editLeaveType(${i})">編輯</button>
-      <button class="btn btn-sm btn-danger" onclick="deleteLeaveType(${i})">刪除</button>
+      <button class="btn btn-sm btn-secondary" data-idx="${i}" onclick="editLeaveType(Number(this.dataset.idx))">編輯</button>
+      <button class="btn btn-sm btn-danger" data-idx="${i}" onclick="deleteLeaveType(Number(this.dataset.idx))">刪除</button>
     </div>
   `).join('');
   const modal = document.createElement('div');
