@@ -90,7 +90,10 @@ body.dark .bg-setting-panel{background:#333;color:#eee}
   <div id="tab-concert" class="tab-content">
     <h3 style="color:#1f497d;margin-top:0">演唱會歌單</h3>
     <div id="songList"></div>
-    <button class="btn btn-primary" style="margin-top:12px" onclick="addSong()">+ 新增歌曲</button>
+    <div style="margin-top:12px;display:flex;gap:8px">
+      <input type="text" id="newSongName" placeholder="輸入歌曲名稱" style="flex:1;padding:8px;border-radius:8px;border:1px solid #ddd">
+      <button class="btn btn-primary" onclick="addSong()">新增</button>
+    </div>
     <div id="lyricEditor" style="display:none;margin-top:20px;padding:16px;background:rgba(255,255,255,.6);border-radius:12px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
         <strong id="lyricTitle"></strong>
