@@ -164,7 +164,7 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"No
     </div>
     <div style="margin-bottom:16px">
       <label>顏色</label><br>
-      <input type="color" id="eventColor" value="#c55a11" style="margin-top:4px;width:60px;height:36px;border:none;cursor:pointer">
+      <input type="color" id="eventColor" value="#ff6b6b" style="margin-top:4px;width:60px;height:36px;border:none;cursor:pointer">
     </div>
     <div style="display:flex;gap:8px;justify-content:flex-end">
       <button class="btn btn-secondary" onclick="closeEventModal()">取消</button>
@@ -209,7 +209,7 @@ let leaveTypes = [
   { id: 'personal', name: '特休', color: '#3b82f6', emoji: '✨' },
   { id: 'comp', name: '補休', color: '#f59e0b', emoji: '🔄' }
 ];
-let events = []; // { id, name, color, start, end }
+let events = [];
 let recurrings = [];
 let bgImages = [], bannerImages = [], sideLeft = '', sideRight = '';
 let slideshowActive = false, slideshowTime = 10000;
@@ -293,7 +293,6 @@ function renderCalendar() {
     const el = document.createElement('div'); el.className = 'day other'; el.textContent = d; daysEl.appendChild(el); dayCells.push(null);
   }
 
-  // 畫事件色條
   const monthStart = formatDate(new Date(y, m, 1));
   const monthEnd = formatDate(new Date(y, m, total));
   events.forEach(ev => {
@@ -306,7 +305,7 @@ function renderCalendar() {
     if (!startEl || !endEl) return;
     const bar = document.createElement('div');
     bar.className = 'event-bar';
-    bar.style.background = ev.color || '#c55a11';
+    bar.style.background = ev.color || '#ff6b6b';
     bar.textContent = ev.name || '';
     const parent = daysEl.getBoundingClientRect();
     const s = startEl.getBoundingClientRect();
@@ -327,6 +326,13 @@ function renderLeaveTypes() {
     `<div class="leave-type-chip" style="background:${t.color}">${t.emoji||''} ${t.name}</div>`
   ).join('');
 }
+function renderUpcoming() {
+  const el = document.getElementById('upcomingList');
+  const today = formatDate(new Date());
+  const items = events.filter(e => e.end >= today).sort((a,b) => a.start.localeCompare(b.start)).slice(0, 8);
+  if (!items.length) { el.innerHTML = '<div style="color:#999;padding:8px 0">目前沒有即將到來的事件</div>'; return; }
+  el.innerHTML = items.map(e => `<div style="padding:6px 0;border-bottom:1px solid #eee">${e.start} ~ ${e.end}　<span style="color:${e.color}">●</span> ${e.name}</div>`).join('');
+}
 function updateMonthOffCount() {
   const y = currentDate.getFullYear(), m = currentDate.getMonth();
   const monthStart = formatDate(new Date(y, m, 1));
@@ -340,12 +346,6 @@ function updateMonthOffCount() {
     }
   });
   document.getElementById('monthOffCount').textContent = count ? `本月休假：${count} 天` : '';
-}
-  const el = document.getElementById('upcomingList');
-  const today = formatDate(new Date());
-  const items = events.filter(e => e.end >= today).sort((a,b) => a.start.localeCompare(b.start)).slice(0, 8);
-  if (!items.length) { el.innerHTML = '<div style="color:#999;padding:8px 0">目前沒有即將到來的事件</div>'; return; }
-  el.innerHTML = items.map(e => `<div style="padding:6px 0;border-bottom:1px solid #eee">${e.start} ~ ${e.end}　<span style="color:${e.color}">●</span> ${e.name}</div>`).join('');
 }
 function renderRecurring() {
   const el = document.getElementById('recurringList');
@@ -405,7 +405,7 @@ function deleteCurrentEvent() {
 function addLeaveType() {
   const modal = document.createElement('div');
   modal.className = 'modal-overlay active';
-  modal.innerHTML = `<div class="modal-card" style="max-width:360px"><h3 style="margin-top:0;color:#c55a11">新增類型</h3><div style="margin-bottom:10px"><label>名稱</label><input type="text" id="newTypeName" style="width:100%;padding:8px;margin-top:4px;border-radius:6px;border:1px solid #ddd"></div><div style="margin-bottom:16px"><label>顏色</label><br><input type="color" id="newTypeColor" value="#6b7280" style="margin-top:6px;width:60px;height:36px;border:none"></div><div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">取消</button><button class="btn btn-primary" onclick="const n=document.getElementById('newTypeName').value.trim();const c=document.getElementById('newTypeColor').value;if(n){leaveTypes.push({id:'t_'+Date.now(),name:n,color:c,emoji:'📌'});save();renderLeaveTypes();this.closest('.modal-overlay').remove();}">確定</button></div></div>`;
+  modal.innerHTML = `<div class="modal-card" style="max-width:360px"><h3 style="margin-top:0;color:#c55a11">新增類型</h3><div style="margin-bottom:10px"><label>名稱</label><input type="text" id="newTypeName" style="width:100%;padding:8px;margin-top:4px;border-radius:6px;border:1px solid #ddd"></div><div style="margin-bottom:16px"><label>顏色</label><br><input type="color" id="newTypeColor" value="#ff6b6b" style="margin-top:6px;width:60px;height:36px;border:none"></div><div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">取消</button><button class="btn btn-primary" onclick="const n=document.getElementById('newTypeName').value.trim();const c=document.getElementById('newTypeColor').value;if(n){leaveTypes.push({id:'t_'+Date.now(),name:n,color:c,emoji:'📌'});save();renderLeaveTypes();this.closest('.modal-overlay').remove();}">確定</button></div></div>`;
   document.body.appendChild(modal);
 }
 function openLeaveManage() {
