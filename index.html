@@ -22,7 +22,7 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"No
 .days{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
 .day{aspect-ratio:1;border-radius:8px;display:flex;align-items:center;justify-content:center;cursor:pointer;background:#fff;font-size:.95rem;position:relative}
 .day:hover{background:#f3f4f6}.day.other{color:#ccc;background:transparent}.day.today{box-shadow:inset 0 0 0 2px #c55a11;font-weight:700}
-.event-bar{position:absolute;bottom:4px;left:4px;right:4px;height:14px;border-radius:7px;font-size:10px;font-weight:600;color:white;display:flex;align-items:center;justify-content:center;overflow:hidden;white-space:nowrap;padding:0 4px;pointer-events:none}
+.event-bar{position:absolute;left:4px;right:4px;height:14px;border-radius:7px;font-size:10px;font-weight:600;color:white;display:flex;align-items:center;justify-content:center;overflow:hidden;white-space:nowrap;padding:0 4px;pointer-events:none}
 .btn{padding:8px 14px;border:none;border-radius:8px;cursor:pointer;font-weight:700}
 .btn-primary{background:#c55a11;color:#fff}.btn-secondary{background:#6c757d;color:#fff}.btn-danger{background:#dc3545;color:#fff}.btn-sm{padding:6px 10px;font-size:13px}
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:2000}
@@ -139,7 +139,10 @@ function renderCalendar() {
     el.className = 'day' + (ds === todayStr ? ' today' : '');
     el.innerHTML = `<span style="position:absolute;top:4px;right:6px">${d}</span>`;
     el.onclick = () => {
-      if (selectedQuick) {
+      if (eraserMode) {
+        events = events.filter(ev => !(ds >= ev.start && ds <= ev.end));
+        save(); renderCalendar();
+      } else if (selectedQuick) {
         events.push({ id: Date.now(), name: selectedQuick.name, start: ds, end: ds, color: selectedQuick.color });
         save(); renderCalendar();
       } else {
@@ -178,10 +181,16 @@ function renderQuickBar() {
   if (!bar) return;
   bar.innerHTML = presets.map(p =>
     `<button class="btn btn-sm" style="background:${p.color};color:#fff;opacity:${selectedQuick && selectedQuick.name===p.name?'1':'0.7'}" onclick="selectQuick('${p.name}','${p.color}')">${p.name}</button>`
-  ).join('') + `<button class="btn btn-sm btn-secondary" onclick="selectQuick(null)">取消</button>`;
+  ).join('') + `<button class="btn btn-sm btn-secondary" onclick="selectQuick(null)">取消</button><button class="btn btn-sm" style="background:#dc3545;color:#fff;opacity:${eraserMode?'1':'0.7'}" onclick="toggleEraser()">橡皮擦</button>`;
 }
 function selectQuick(name, color) {
   selectedQuick = name ? { name, color } : null;
+  eraserMode = false;
+  renderQuickBar();
+}
+function toggleEraser() {
+  eraserMode = !eraserMode;
+  selectedQuick = null;
   renderQuickBar();
 }
 
