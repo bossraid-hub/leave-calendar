@@ -158,7 +158,19 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"No
     </div>
   </div>
 </div>
-<div class="modal-overlay" id="recurringModal"><div class="modal-card"><h3 style="margin-top:0;color:#c55a11">新增週期性事件</h3><div style="margin-bottom:10px"><label>名稱</label><br><input type="text" id="recName" placeholder="例如：生日" style="width:100%;padding:8px;margin-top:4px"></div><div style="margin-bottom:10px"><label>日期（月-日）</label><br><input type="text" id="recMonthDay" placeholder="例如：03-15" style="width:100%;padding:8px;margin-top:4px"></div><div style="margin-bottom:10px"><label>顏色</label><br><input type="color" id="recColor" value="#ec4899" style="margin-top:4px"></div><div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn btn-secondary" onclick="closeRecurringModal()">取消</button><button class="btn btn-primary" onclick="saveRecurring()">儲存</button></div></div></div>
+
+<div class="modal-overlay" id="recurringModal">
+  <div class="modal-card">
+    <h3 style="margin-top:0;color:#c55a11">新增週期性事件</h3>
+    <div style="margin-bottom:10px"><label>名稱</label><br><input type="text" id="recName" placeholder="例如：生日" style="width:100%;padding:8px;margin-top:4px"></div>
+    <div style="margin-bottom:10px"><label>日期（月-日）</label><br><input type="text" id="recMonthDay" placeholder="例如：03-15" style="width:100%;padding:8px;margin-top:4px"></div>
+    <div style="margin-bottom:10px"><label>顏色</label><br><input type="color" id="recColor" value="#ec4899" style="margin-top:4px"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn btn-secondary" onclick="closeRecurringModal()">取消</button>
+      <button class="btn btn-primary" onclick="saveRecurring()">儲存</button>
+    </div>
+  </div>
+</div>
 
 <script>
 const firebaseConfig = {
@@ -192,13 +204,9 @@ function loadLocal() {
     const data = JSON.parse(localStorage.getItem('leave_calendar_data') || '{}');
     if (data.leaveTypes) {
       leaveTypes = data.leaveTypes;
-      // 強制把舊的「病假」改成「休假」
       leaveTypes.forEach(t => {
         if (t.name === '病假' || t.id === 'sick') {
-          t.name = '休假';
-          t.id = 'off';
-          t.emoji = '😴';
-          t.color = '#6b7280';
+          t.name = '休假'; t.id = 'off'; t.emoji = '😴'; t.color = '#6b7280';
         }
       });
     }
@@ -232,7 +240,13 @@ dbRef.on('value', snap => {
   const val = snap.val();
   if (val) {
     leaveTypes = val.leaveTypes || leaveTypes;
+    leaveTypes.forEach(t => {
+      if (t.name === '病假' || t.id === 'sick') {
+        t.name = '休假'; t.id = 'off'; t.emoji = '😴'; t.color = '#6b7280';
+      }
+    });
     leaves = val.leaves || leaves;
+    dayNotes = val.dayNotes || dayNotes;
     recurrings = val.recurrings || recurrings;
     bgImages = val.bgImages || bgImages;
     bannerImages = val.bannerImages || bannerImages;
@@ -289,60 +303,6 @@ function renderLeaveTypes() {
   document.getElementById('leaveTypes').innerHTML = leaveTypes.map(t =>
     `<div class="leave-type-chip" style="background:${t.color}" onclick="selectType('${t.id}')">${t.emoji||''} ${t.name}</div>`
   ).join('');
-}
-function openLeaveManage() {
-  let html = leaveTypes.map((t, i) => `
-    <div style="display:flex;align-items:center;gap:8px;margin:6px 0">
-      <div class="leave-type-chip" style="background:${t.color};flex:1">${t.emoji||''} ${t.name}</div>
-      <button class="btn btn-sm btn-secondary" onclick="editLeaveType(${i})">編輯</button>
-      <button class="btn btn-sm btn-danger" onclick="deleteLeaveType(${i})">刪除</button>
-    </div>
-  `).join('');
-  const modal = document.createElement('div');
-  modal.className = 'modal-overlay active';
-  modal.innerHTML = `<div class="modal-card" style="max-width:480px"><h3 style="margin-top:0;color:#c55a11">管理假別</h3>${html}<div style="margin-top:16px;text-align:right"><button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">關閉</button></div></div>`;
-  document.body.appendChild(modal);
-}
-function editLeaveType(i) {
-  const t = leaveTypes[i];
-  const modal = document.createElement('div');
-  modal.className = 'modal-overlay active';
-  modal.innerHTML = `
-    <div class="modal-card" style="max-width:360px">
-      <h3 style="margin-top:0;color:#c55a11">編輯假別</h3>
-      <div style="margin-bottom:10px">
-        <label>名稱</label>
-        <input type="text" id="editLeaveName" value="${t.name}" style="width:100%;padding:8px;margin-top:4px;border-radius:6px;border:1px solid #ddd">
-      </div>
-      <div style="margin-bottom:16px">
-        <label>顏色</label><br>
-        <input type="color" id="editLeaveColor" value="${t.color}" style="margin-top:6px;width:60px;height:36px;border:none;cursor:pointer">
-      </div>
-      <div style="display:flex;gap:8px;justify-content:flex-end">
-        <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">取消</button>
-        <button class="btn btn-primary" onclick="saveEditLeaveType(${i})">儲存</button>
-      </div>
-    </div>`;
-  document.body.appendChild(modal);
-}
-function saveEditLeaveType(i) {
-  const name = document.getElementById('editLeaveName').value.trim();
-  const color = document.getElementById('editLeaveColor').value;
-  if (!name) { alert('名稱不能空白'); return; }
-  leaveTypes[i].name = name;
-  leaveTypes[i].color = color;
-  save();
-  renderLeaveTypes();
-  document.querySelectorAll('.modal-overlay').forEach(m => m.remove());
-  openLeaveManage();
-}
-  if (confirm('刪除「' + leaveTypes[i].name + '」？')) {
-    leaveTypes.splice(i, 1);
-    save();
-    renderLeaveTypes();
-    document.querySelector('.modal-overlay.active')?.remove();
-    openLeaveManage();
-  }
 }
 function renderUpcoming() {
   const el = document.getElementById('upcomingList');
@@ -420,9 +380,62 @@ function saveNewLeaveType() {
   const color = document.getElementById('newLeaveColor').value;
   if (!name) { alert('請輸入名稱'); return; }
   leaveTypes.push({ id: 'c_'+Date.now(), name, color, emoji: '📌' });
-  save();
-  renderLeaveTypes();
+  save(); renderLeaveTypes();
   document.querySelector('.modal-overlay.active')?.remove();
+}
+
+function openLeaveManage() {
+  let html = leaveTypes.map((t, i) => `
+    <div style="display:flex;align-items:center;gap:8px;margin:6px 0">
+      <div class="leave-type-chip" style="background:${t.color};flex:1">${t.emoji||''} ${t.name}</div>
+      <button class="btn btn-sm btn-secondary" onclick="editLeaveType(${i})">編輯</button>
+      <button class="btn btn-sm btn-danger" onclick="deleteLeaveType(${i})">刪除</button>
+    </div>
+  `).join('');
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay active';
+  modal.innerHTML = `<div class="modal-card" style="max-width:480px"><h3 style="margin-top:0;color:#c55a11">管理假別</h3>${html}<div style="margin-top:16px;text-align:right"><button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">關閉</button></div></div>`;
+  document.body.appendChild(modal);
+}
+function editLeaveType(i) {
+  const t = leaveTypes[i];
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay active';
+  modal.innerHTML = `
+    <div class="modal-card" style="max-width:360px">
+      <h3 style="margin-top:0;color:#c55a11">編輯假別</h3>
+      <div style="margin-bottom:10px">
+        <label>名稱</label>
+        <input type="text" id="editLeaveName" value="${t.name}" style="width:100%;padding:8px;margin-top:4px;border-radius:6px;border:1px solid #ddd">
+      </div>
+      <div style="margin-bottom:16px">
+        <label>顏色</label><br>
+        <input type="color" id="editLeaveColor" value="${t.color}" style="margin-top:6px;width:60px;height:36px;border:none;cursor:pointer">
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">取消</button>
+        <button class="btn btn-primary" onclick="saveEditLeaveType(${i})">儲存</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+}
+function saveEditLeaveType(i) {
+  const name = document.getElementById('editLeaveName').value.trim();
+  const color = document.getElementById('editLeaveColor').value;
+  if (!name) { alert('名稱不能空白'); return; }
+  leaveTypes[i].name = name;
+  leaveTypes[i].color = color;
+  save(); renderLeaveTypes();
+  document.querySelectorAll('.modal-overlay').forEach(m => m.remove());
+  openLeaveManage();
+}
+function deleteLeaveType(i) {
+  if (confirm('刪除「' + leaveTypes[i].name + '」？')) {
+    leaveTypes.splice(i, 1);
+    save(); renderLeaveTypes();
+    document.querySelector('.modal-overlay.active')?.remove();
+    openLeaveManage();
+  }
 }
 
 function openRecurringModal() { document.getElementById('recurringModal').classList.add('active'); }
@@ -437,7 +450,6 @@ function saveRecurring() {
 }
 function deleteRecurring(i) { if (confirm('刪除？')) { recurrings.splice(i, 1); save(); renderRecurring(); renderCalendar(); } }
 
-// ===== 背景系統（照原本網站邏輯） =====
 function updateGalleryDisplay() {
   const leftImg = document.getElementById('leftGalleryImg');
   const rightImg = document.getElementById('rightGalleryImg');
@@ -514,39 +526,19 @@ document.getElementById('btnSetRight').onclick = function() {
 };
 document.getElementById('leftSideFile').onchange = function(e) {
   const file = e.target.files[0]; if (!file) return;
-  if (file.size > 500 * 1024) {
-    alert('檔案太大，請改用圖片網址');
-    return;
-  }
   const reader = new FileReader();
-  reader.onload = function(event) {
-    sideLeft = event.target.result;
-    updateGalleryDisplay();
-    save();
-    e.target.value = '';
-    alert('左側大背景已套用');
-  };
+  reader.onload = function(event) { sideLeft = event.target.result; save(); updateGalleryDisplay(); e.target.value = ''; };
   reader.readAsDataURL(file);
 };
 document.getElementById('rightSideFile').onchange = function(e) {
   const file = e.target.files[0]; if (!file) return;
-  if (file.size > 500 * 1024) {
-    alert('檔案太大，請改用圖片網址');
-    return;
-  }
   const reader = new FileReader();
-  reader.onload = function(event) {
-    sideRight = event.target.result;
-    updateGalleryDisplay();
-    save();
-    e.target.value = '';
-    alert('右側大背景已套用');
-  };
+  reader.onload = function(event) { sideRight = event.target.result; save(); updateGalleryDisplay(); e.target.value = ''; };
   reader.readAsDataURL(file);
 };
 
 function exportData() {
-  const blob = new Blob([JSON.stringify({leaveTypes, leaves, recurrings, bgImages, bannerImages, sideLeft, sideRight, slideshowActive, slideshowTime}, null, 2)], {type:'application/json'});
+  const blob = new Blob([JSON.stringify({leaveTypes, leaves, dayNotes, recurrings, bgImages, bannerImages, sideLeft, sideRight, slideshowActive, slideshowTime}, null, 2)], {type:'application/json'});
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = '排假資料.json'; a.click();
 }
 function importData(e) {
@@ -555,7 +547,7 @@ function importData(e) {
   r.onload = () => {
     try {
       const d = JSON.parse(r.result);
-      leaveTypes = d.leaveTypes || leaveTypes; leaves = d.leaves || leaves; recurrings = d.recurrings || recurrings;
+      leaveTypes = d.leaveTypes || leaveTypes; leaves = d.leaves || leaves; dayNotes = d.dayNotes || dayNotes; recurrings = d.recurrings || recurrings;
       bgImages = d.bgImages || bgImages; bannerImages = d.bannerImages || bannerImages;
       sideLeft = d.sideLeft || sideLeft; sideRight = d.sideRight || sideRight;
       slideshowActive = d.slideshowActive || false; slideshowTime = d.slideshowTime || 10000;
