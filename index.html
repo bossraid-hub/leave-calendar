@@ -212,9 +212,17 @@ function selectType(id){selectedTypeId=id;}
 
 function openLeaveModal(dateStr){
   selectedDate=dateStr;
+  selectedTypeId = leaves[dateStr] || null;
   document.getElementById('modalDate').textContent=dateStr;
-  document.getElementById('modalTypes').innerHTML=leaveTypes.map(t=>'<div class="leave-type-chip" style="background:'+t.color+';margin:4px;display:inline-block" onclick="selectType(\''+t.id+'\')">'+(t.emoji||'')+' '+t.name+'</div>').join('');
+  const typesEl = document.getElementById('modalTypes');
+  typesEl.innerHTML=leaveTypes.map(t=>'<div class="leave-type-chip" style="background:'+t.color+';margin:4px;display:inline-block;opacity:'+(selectedTypeId===t.id?'1':'0.7')+'" data-id="'+t.id+'" onclick="selectModalType(\''+t.id+'\')">'+(t.emoji||'')+' '+t.name+'</div>').join('');
   document.getElementById('leaveModal').classList.add('active');
+}
+function selectModalType(id){
+  selectedTypeId = id;
+  document.querySelectorAll('#modalTypes .leave-type-chip').forEach(el => {
+    el.style.opacity = el.getAttribute('data-id') === id ? '1' : '0.7';
+  });
 }
 function confirmLeave(){if(selectedTypeId)leaves[selectedDate]=selectedTypeId;save();closeModal();renderCalendar();}
 function clearDay(){delete leaves[selectedDate];save();closeModal();renderCalendar();}
@@ -251,15 +259,83 @@ function setupSlideshowTimer(){if(slideshowTimer)clearInterval(slideshowTimer);i
 document.getElementById('slideshowToggle').onchange=function(){slideshowActive=this.checked;save();setupSlideshowTimer();};
 document.getElementById('slideshowInterval').onchange=function(){slideshowTime=Number(this.value);save();setupSlideshowTimer();};
 
-document.getElementById('bgFileInput').onchange=function(e){const file=e.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=function(event){bgImages.push(event.target.result);save();updateGalleryDisplay();e.target.value='';};reader.readAsDataURL(file);};
-document.getElementById('btnAddBgUrl').onclick=function(){const url=document.getElementById('bgUrlInput').value.trim();if(url){bgImages.push(url);save();updateGalleryDisplay();document.getElementById('bgUrlInput').value='';}};
+document.getElementById('bgFileInput').onchange=function(e){
+  const file=e.target.files[0];
+  if(!file)return;
+  if(file.size > 600*1024){ alert('檔案偏大，建議改用圖片網址'); }
+  const reader=new FileReader();
+  reader.onload=function(event){
+    bgImages.push(event.target.result);
+    save();
+    updateGalleryDisplay();
+    e.target.value='';
+    alert('側邊相冊已新增');
+  };
+  reader.readAsDataURL(file);
+};
+document.getElementById('btnAddBgUrl').onclick=function(){
+  const url=document.getElementById('bgUrlInput').value.trim();
+  if(url){ bgImages.push(url); save(); updateGalleryDisplay(); document.getElementById('bgUrlInput').value=''; alert('側邊相冊已新增'); }
+};
 
-document.getElementById('bannerFileInput').onchange=function(e){const file=e.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=function(event){bannerImages.push(event.target.result);save();updateGalleryDisplay();e.target.value='';};reader.readAsDataURL(file);};
-document.getElementById('btnAddBannerUrl').onclick=function(){const url=document.getElementById('bannerUrlInput').value.trim();if(url){bannerImages.push(url);save();updateGalleryDisplay();document.getElementById('bannerUrlInput').value='';}};
+document.getElementById('bannerFileInput').onchange=function(e){
+  const file=e.target.files[0];
+  if(!file)return;
+  if(file.size > 600*1024){ alert('檔案偏大，建議改用圖片網址'); }
+  const reader=new FileReader();
+  reader.onload=function(event){
+    bannerImages.push(event.target.result);
+    save();
+    updateGalleryDisplay();
+    e.target.value='';
+    alert('頂部橫幅已新增');
+  };
+  reader.readAsDataURL(file);
+};
+document.getElementById('btnAddBannerUrl').onclick=function(){
+  const url=document.getElementById('bannerUrlInput').value.trim();
+  if(url){ bannerImages.push(url); save(); updateGalleryDisplay(); document.getElementById('bannerUrlInput').value=''; alert('頂部橫幅已新增'); }
+};
 
-function setSide(side){const url=document.getElementById(side+'SideUrl').value.trim();if(url){if(side==='left')sideLeft=url;else sideRight=url;save();updateGalleryDisplay();document.getElementById(side+'SideUrl').value='';}}
-document.getElementById('leftSideFile').onchange=function(e){const file=e.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=function(event){sideLeft=event.target.result;save();updateGalleryDisplay();e.target.value='';alert('左側大背景已套用');};reader.readAsDataURL(file);};
-document.getElementById('rightSideFile').onchange=function(e){const file=e.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=function(event){sideRight=event.target.result;save();updateGalleryDisplay();e.target.value='';alert('右側大背景已套用');};reader.readAsDataURL(file);};
+function setSide(side){
+  const url=document.getElementById(side+'SideUrl').value.trim();
+  if(url){
+    if(side==='left') sideLeft=url;
+    else sideRight=url;
+    save();
+    updateGalleryDisplay();
+    document.getElementById(side+'SideUrl').value='';
+    alert((side==='left'?'左側':'右側')+'大背景已套用');
+  }
+}
+document.getElementById('leftSideFile').onchange=function(e){
+  const file=e.target.files[0];
+  if(!file)return;
+  if(file.size > 600*1024){ alert('檔案偏大，建議改用圖片網址'); }
+  const reader=new FileReader();
+  reader.onload=function(event){
+    sideLeft=event.target.result;
+    save();
+    updateGalleryDisplay();
+    e.target.value='';
+    alert('左側大背景已套用');
+  };
+  reader.readAsDataURL(file);
+};
+document.getElementById('rightSideFile').onchange=function(e){
+  const file=e.target.files[0];
+  if(!file)return;
+  if(file.size > 600*1024){ alert('檔案偏大，建議改用圖片網址'); }
+  const reader=new FileReader();
+  reader.onload=function(event){
+    sideRight=event.target.result;
+    save();
+    updateGalleryDisplay();
+    e.target.value='';
+    alert('右側大背景已套用');
+  };
+  reader.readAsDataURL(file);
+};
 
 function exportData(){const blob=new Blob([JSON.stringify({leaveTypes,leaves,recurrings,bgImages,bannerImages,sideLeft,sideRight,slideshowActive,slideshowTime},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='排假資料.json';a.click();}
 function importData(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(r.result);leaveTypes=d.leaveTypes||leaveTypes;leaves=d.leaves||leaves;recurrings=d.recurrings||recurrings;bgImages=d.bgImages||bgImages;bannerImages=d.bannerImages||bannerImages;sideLeft=d.sideLeft||sideLeft;sideRight=d.sideRight||sideRight;slideshowActive=d.slideshowActive||false;slideshowTime=d.slideshowTime||10000;save();renderAll();alert('匯入成功');}catch{alert('格式錯誤');}};r.readAsText(f);}
