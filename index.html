@@ -14,7 +14,7 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"No
 .full-side-bg{position:fixed;top:0;height:100vh;width:32vw;z-index:0;background-size:cover;background-position:center}
 .full-side-left{left:0}.full-side-right{right:0}
 @media(max-width:1350px){.full-side-bg{display:none}}
-.side-gallery{position:fixed;top:50%;transform:translateY(-50%);width:220px;height:450px;background:rgba(0,0,0,.6);border:2px solid rgba(255,255,255,.2);border-radius:12px;overflow:hidden;z-index:10;display:flex;align-items:center;justify-content:center}
+.side-gallery img { max-width: 100%; max-height: 100%; object-fit: contain; }
 .side-left{left:25px}.side-right{right:25px}
 @media(max-width:1350px){.side-gallery{display:none}}
 .top-banner-gallery{width:100%;max-width:900px;height:180px;background:rgba(0,0,0,.6);border-radius:16px;overflow:hidden;margin:16px auto;position:relative;z-index:2}
@@ -71,7 +71,7 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"No
     <div style="text-align:center;margin-bottom:12px"><button class="btn btn-primary" onclick="goToday()">今天</button></div>
     <div class="weekdays"><div>日</div><div>一</div><div>二</div><div>三</div><div>四</div><div>五</div><div>六</div></div>
     <div class="days" id="days"></div>
-    <h3 style="margin:20px 0 8px;color:#1f497d">假別（點選後再點日期套用）</h3>
+    <h3 style="margin:20px 0 8px;color:#1f497d">假別（可編輯）</h3>
     <div class="leave-types" id="leaveTypes"></div>
     <button class="btn btn-sm btn-primary" onclick="addLeaveType()">+ 新增假別</button>
     <h3 style="margin:20px 0 8px;color:#1f497d">即將到來</h3>
@@ -141,7 +141,21 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"No
   </div>
 </div>
 
-<div class="modal-overlay" id="leaveModal"><div class="modal-card"><h3 id="modalDate" style="margin-top:0;color:#c55a11"></h3><div id="modalTypes"></div><div style="margin-top:16px;display:flex;gap:8px;justify-content:flex-end"><button class="btn btn-secondary" onclick="closeModal()">取消</button><button class="btn btn-danger" onclick="clearDay()">清除</button><button class="btn btn-primary" onclick="confirmLeave()">確定</button></div></div></div>
+<div class="modal-overlay" id="leaveModal">
+  <div class="modal-card">
+    <h3 id="modalDate" style="margin-top:0;color:#c55a11"></h3>
+    <div id="modalTypes"></div>
+    <div style="margin-top:12px">
+      <label>當天事項（選填）</label>
+      <textarea id="dayNote" rows="3" style="width:100%;padding:8px;margin-top:4px;border-radius:6px;border:1px solid #ddd" placeholder="例如：上午看牙醫、下午出遊..."></textarea>
+    </div>
+    <div style="margin-top:16px;display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn btn-secondary" onclick="closeModal()">取消</button>
+      <button class="btn btn-danger" onclick="clearDay()">清除</button>
+      <button class="btn btn-primary" onclick="confirmLeave()">確定</button>
+    </div>
+  </div>
+</div>
 <div class="modal-overlay" id="recurringModal"><div class="modal-card"><h3 style="margin-top:0;color:#c55a11">新增週期性事件</h3><div style="margin-bottom:10px"><label>名稱</label><br><input type="text" id="recName" placeholder="例如：生日" style="width:100%;padding:8px;margin-top:4px"></div><div style="margin-bottom:10px"><label>日期（月-日）</label><br><input type="text" id="recMonthDay" placeholder="例如：03-15" style="width:100%;padding:8px;margin-top:4px"></div><div style="margin-bottom:10px"><label>顏色</label><br><input type="color" id="recColor" value="#ec4899" style="margin-top:4px"></div><div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn btn-secondary" onclick="closeRecurringModal()">取消</button><button class="btn btn-primary" onclick="saveRecurring()">儲存</button></div></div></div>
 
 <script>
@@ -165,7 +179,7 @@ let leaveTypes = [
   { id: 'personal', name: '特休', color: '#3b82f6', emoji: '✨' },
   { id: 'comp', name: '補休', color: '#f59e0b', emoji: '🔄' }
 ];
-let leaves = {}, recurrings = [];
+let leaves = {}, dayNotes = {}, recurrings = [];
 let bgImages = [], bannerImages = [], sideLeft = '', sideRight = '';
 let slideshowActive = false, slideshowTime = 10000;
 let currentBgIndex = 0, currentBannerIndex = 0, slideshowTimer = null;
@@ -187,6 +201,7 @@ function loadLocal() {
       });
     }
     if (data.leaves) leaves = data.leaves;
+    if (data.dayNotes) dayNotes = data.dayNotes;
     if (data.recurrings) recurrings = data.recurrings;
     if (data.bgImages) bgImages = data.bgImages;
     if (data.bannerImages) bannerImages = data.bannerImages;
@@ -198,13 +213,13 @@ function loadLocal() {
 }
 function saveLocal() {
   localStorage.setItem('leave_calendar_data', JSON.stringify({
-    leaveTypes, leaves, recurrings, bgImages, bannerImages, sideLeft, sideRight, slideshowActive, slideshowTime
+    leaveTypes, leaves, dayNotes, recurrings, bgImages, bannerImages, sideLeft, sideRight, slideshowActive, slideshowTime
   }));
 }
 function saveCloud() {
   statusEl.textContent = '🔄 同步中...';
   statusEl.className = 'syncing';
-  dbRef.set({ leaveTypes, leaves, recurrings, bgImages, bannerImages, sideLeft, sideRight, slideshowActive, slideshowTime })
+  dbRef.set({ leaveTypes, leaves, dayNotes, recurrings, bgImages, bannerImages, sideLeft, sideRight, slideshowActive, slideshowTime })
     .then(() => { statusEl.textContent = '☁️ 已同步'; statusEl.className = ''; })
     .catch(() => { statusEl.textContent = '⚠️ 同步失敗'; statusEl.className = 'syncing'; });
 }
@@ -269,9 +284,20 @@ function renderCalendar() {
 }
 
 function renderLeaveTypes() {
-  document.getElementById('leaveTypes').innerHTML = leaveTypes.map(t =>
-    `<div class="leave-type-chip" style="background:${t.color}" onclick="selectType('${t.id}')">${t.emoji||''} ${t.name}</div>`
+  document.getElementById('leaveTypes').innerHTML = leaveTypes.map((t, i) =>
+    `<div class="leave-type-chip" style="background:${t.color}" onclick="selectType('${t.id}')">${t.emoji||''} ${t.name}</div>
+     <button class="btn btn-sm btn-secondary" style="margin-left:4px" onclick="editLeaveType(${i})">編輯</button>`
   ).join('');
+}
+function editLeaveType(i) {
+  const t = leaveTypes[i];
+  const name = prompt('假別名稱：', t.name);
+  if (name === null) return;
+  if (name.trim() === '') { if (confirm('刪除此假別？')) { leaveTypes.splice(i, 1); save(); renderLeaveTypes(); } return; }
+  t.name = name.trim();
+  const color = prompt('顏色（例如 #10b981）：', t.color);
+  if (color) t.color = color;
+  save(); renderLeaveTypes();
 }
 function renderUpcoming() {
   const el = document.getElementById('upcomingList');
@@ -301,14 +327,26 @@ function openLeaveModal(dateStr) {
   selectedDate = dateStr;
   selectedTypeId = leaves[dateStr] || null;
   document.getElementById('modalDate').textContent = dateStr;
+  document.getElementById('dayNote').value = dayNotes[dateStr] || '';
   document.getElementById('modalTypes').innerHTML = leaveTypes.map(t =>
     `<div class="leave-type-chip" style="background:${t.color};margin:4px;display:inline-block;opacity:${selectedTypeId===t.id?'1':'0.7'}" onclick="selectModalType('${t.id}')">${t.emoji||''} ${t.name}</div>`
   ).join('');
   document.getElementById('leaveModal').classList.add('active');
 }
 function selectModalType(id) { selectedTypeId = id; openLeaveModal(selectedDate); }
-function confirmLeave() { if (selectedTypeId) leaves[selectedDate] = selectedTypeId; save(); closeModal(); renderCalendar(); }
-function clearDay() { delete leaves[selectedDate]; save(); closeModal(); renderCalendar(); }
+function confirmLeave() {
+  if (selectedTypeId) leaves[selectedDate] = selectedTypeId;
+  else delete leaves[selectedDate];
+  const note = document.getElementById('dayNote').value.trim();
+  if (note) dayNotes[selectedDate] = note;
+  else delete dayNotes[selectedDate];
+  save(); closeModal(); renderCalendar();
+}
+function clearDay() {
+  delete leaves[selectedDate];
+  delete dayNotes[selectedDate];
+  save(); closeModal(); renderCalendar();
+}
 function closeModal() { document.getElementById('leaveModal').classList.remove('active'); }
 
 function addLeaveType() {
