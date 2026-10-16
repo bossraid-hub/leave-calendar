@@ -147,8 +147,16 @@ function renderCalendar() {
   const monthEnd = formatDate(new Date(y, m, total));
   events.forEach(ev => {
     if (ev.end < monthStart || ev.start > monthEnd) return;
-    const startIdx = dayCells.findIndex(ds => ds && ds >= ev.start);
-    const endIdx = dayCells.findLastIndex(ds => ds && ds <= ev.end);
+    // 找到這個事件在當月實際覆蓋的第一個與最後一個格子
+    let startIdx = -1, endIdx = -1;
+    for (let i = 0; i < dayCells.length; i++) {
+      const ds = dayCells[i];
+      if (!ds) continue;
+      if (ds >= ev.start && ds <= ev.end) {
+        if (startIdx === -1) startIdx = i;
+        endIdx = i;
+      }
+    }
     if (startIdx < 0 || endIdx < 0) return;
     const startEl = daysEl.children[startIdx];
     const endEl = daysEl.children[endIdx];
@@ -173,8 +181,21 @@ function renderCalendar() {
 function renderUpcoming() {
   const el = document.getElementById('upcomingList');
   const today = formatDate(new Date());
-  const items = events.filter(e => e.end >= today).sort((a,b) => a.start.localeCompare(b.start)).slice(0, 6);
-  el.innerHTML = items.length ? items.map(e => `<div style="padding:6px 0;border-bottom:1px solid #eee">${e.start} ~ ${e.end}　<span style="color:${e.color}">●</span> ${e.name}</div>`).join('') : '<div style="color:#999">目前沒有即將到來的事件</div>';
+  const items = events.filter(e => e.end >= today).sort((a,b) => a.start.localeCompare(b.start)).slice(0, 8);
+  if (!items.length) { el.innerHTML = '<div style="color:#999">目前沒有即將到來的事件</div>'; return; }
+  el.innerHTML = items.map((e, i) => `
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #eee">
+      <span>${e.start} ~ ${e.end}　<span style="color:${e.color}">●</span> ${e.name}</span>
+      <button class="btn btn-sm btn-danger" onclick="deleteEvent(${events.indexOf(e)})">🗑️</button>
+    </div>
+  `).join('');
+}
+function deleteEvent(i) {
+  if (confirm('刪除此事件？')) {
+    events.splice(i, 1);
+    save();
+    renderCalendar();
+  }
 }
 function updateMonthOffCount() {
   const y = currentDate.getFullYear(), m = currentDate.getMonth();
