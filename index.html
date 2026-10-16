@@ -89,24 +89,34 @@ body.dark .bg-setting-panel{background:#333;color:#eee}
 
   <div id="tab-concert" class="tab-content">
     <h3 style="color:#1f497d;margin-top:0">演唱會歌單</h3>
-    <div id="songList"></div>
-    <div style="margin-top:12px;display:flex;gap:8px">
-      <input type="text" id="newSongName" placeholder="輸入歌曲名稱" style="flex:1;padding:8px;border-radius:8px;border:1px solid #ddd">
-      <button class="btn btn-primary" onclick="addSong()">新增</button>
-    </div>
-    <details style="margin-top:12px">
-      <summary style="cursor:pointer;font-weight:600">批量新增（貼整份歌單）</summary>
-      <textarea id="batchSongs" rows="6" style="width:100%;margin-top:8px;padding:8px;border-radius:8px;border:1px solid #ddd" placeholder="每行一首，例如：&#10;1. 泣き地蔵&#10;2. ホムンクルス"></textarea>
-      <button class="btn btn-sm btn-secondary" style="margin-top:6px" onclick="batchAddSongs()">批次加入</button>
-    </details>
-    <div id="lyricEditor" style="display:none;margin-top:20px;padding:16px;background:rgba(255,255,255,.6);border-radius:12px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-        <strong id="lyricTitle"></strong>
-        <button class="btn btn-sm btn-secondary" onclick="closeLyric()">關閉</button>
+    <div style="display:flex;gap:16px;min-height:500px">
+      <div style="width:280px;flex-shrink:0;border-right:1px solid #eee;padding-right:12px">
+        <div style="display:flex;gap:6px;margin-bottom:8px">
+          <input type="text" id="newSongName" placeholder="歌曲名稱" style="flex:1;padding:6px;border-radius:6px;border:1px solid #ddd">
+          <button class="btn btn-sm btn-primary" onclick="addSong()">新增</button>
+        </div>
+        <div style="display:flex;gap:6px;margin-bottom:8px">
+          <button class="btn btn-sm btn-secondary" onclick="toggleSelectAll()">全選</button>
+          <button class="btn btn-sm btn-danger" onclick="deleteSelected()">🗑️ 刪除勾選</button>
+        </div>
+        <div id="songList" style="max-height:420px;overflow-y:auto"></div>
+        <details style="margin-top:10px">
+          <summary style="cursor:pointer;font-size:13px">批量新增</summary>
+          <textarea id="batchSongs" rows="4" style="width:100%;margin-top:6px;padding:6px;border-radius:6px;border:1px solid #ddd;font-size:13px" placeholder="每行一首"></textarea>
+          <button class="btn btn-sm btn-secondary" style="margin-top:4px" onclick="batchAddSongs()">加入</button>
+        </details>
       </div>
-      <textarea id="lyricText" class="lyric-box" rows="12" style="width:100%;padding:10px;border-radius:8px;border:1px solid #ddd" placeholder="在這裡輸入歌詞..."></textarea>
-      <div style="margin-top:8px;text-align:right">
-        <button class="btn btn-primary" onclick="saveLyric()">儲存歌詞</button>
+      <div style="flex:1;min-width:0">
+        <div id="lyricDisplay" style="background:rgba(255,255,255,.7);border-radius:12px;padding:16px;min-height:300px">
+          <div style="color:#999">點左邊歌曲查看歌詞</div>
+        </div>
+        <div id="lyricEditor" style="display:none;margin-top:12px">
+          <textarea id="lyricText" class="lyric-box" rows="8" style="width:100%;padding:10px;border-radius:8px;border:1px solid #ddd" placeholder="編輯歌詞..."></textarea>
+          <div style="margin-top:6px;text-align:right">
+            <button class="btn btn-sm btn-secondary" onclick="closeLyric()">取消</button>
+            <button class="btn btn-sm btn-primary" onclick="saveLyric()">儲存</button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -506,14 +516,50 @@ function deleteRecurring(i) { if (confirm('刪除？')) { recurrings.splice(i, 1
 
 function renderSongs() {
   const el = document.getElementById('songList');
-  if (!songs.length) { el.innerHTML = '<div style="color:#999">還沒有歌曲</div>'; return; }
-  el.innerHTML = songs.map((s, i) => `
-    <div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #eee">
+  if (!songs.length) { el.innerHTML = '<div style="color:#999;padding:8px">還沒有歌曲</div>'; return; }
+  el.innerHTML = songs.map(s => `
+    <div style="display:flex;align-items:center;gap:6px;padding:6px 4px;border-bottom:1px solid #eee;cursor:pointer" onclick="showLyric(${s.id})">
+      <input type="checkbox" class="song-check" data-id="${s.id}" onclick="event.stopPropagation()">
       <span style="flex:1;font-weight:600">${s.title}</span>
-      <button class="btn btn-sm btn-secondary" onclick="openLyric(${s.id})">歌詞</button>
-      <button class="btn btn-sm btn-danger" onclick="songs.splice(${i},1);save();renderSongs();">刪除</button>
+      <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation();openLyric(${s.id})">編輯</button>
     </div>
   `).join('');
+}
+let currentSongIndex = -1;
+document.addEventListener('keydown', e => {
+  if (document.getElementById('tab-concert').classList.contains('active') && !e.target.matches('input, textarea')) {
+    if (e.key === 'ArrowDown' || e.key === 'j') {
+      e.preventDefault();
+      currentSongIndex = Math.min(currentSongIndex + 1, songs.length - 1);
+      if (songs[currentSongIndex]) showLyric(songs[currentSongIndex].id);
+    }
+    if (e.key === 'ArrowUp' || e.key === 'k') {
+      e.preventDefault();
+      currentSongIndex = Math.max(currentSongIndex - 1, 0);
+      if (songs[currentSongIndex]) showLyric(songs[currentSongIndex].id);
+    }
+  }
+});
+function showLyric(id) {
+  const s = songs.find(x => x.id === id);
+  if (!s) return;
+  currentSongIndex = songs.findIndex(x => x.id === id);
+  document.getElementById('lyricDisplay').innerHTML = `<div style="font-weight:700;margin-bottom:8px;color:#c55a11">${s.title}</div><div class="lyric-box">${s.lyric || '<span style="color:#999">還沒有歌詞</span>'}</div>`;
+  document.getElementById('lyricEditor').style.display = 'none';
+  document.querySelectorAll('#songList > div').forEach((d, i) => d.style.background = i === currentSongIndex ? 'rgba(197,90,17,.1)' : '');
+}
+function toggleSelectAll() {
+  const checks = document.querySelectorAll('.song-check');
+  const allChecked = [...checks].every(c => c.checked);
+  checks.forEach(c => c.checked = !allChecked);
+}
+function deleteSelected() {
+  const ids = [...document.querySelectorAll('.song-check:checked')].map(c => Number(c.dataset.id));
+  if (!ids.length) return;
+  if (!confirm(`刪除 ${ids.length} 首歌？`)) return;
+  songs = songs.filter(s => !ids.includes(s.id));
+  save(); renderSongs();
+  document.getElementById('lyricDisplay').innerHTML = '<div style="color:#999">點左邊歌曲查看歌詞</div>';
 }
 function addSong() {
   const input = document.getElementById('newSongName');
@@ -534,9 +580,9 @@ function openLyric(id) {
   const s = songs.find(x => x.id === id);
   if (!s) return;
   editingSongId = id;
-  document.getElementById('lyricTitle').textContent = s.title;
   document.getElementById('lyricText').value = s.lyric || '';
   document.getElementById('lyricEditor').style.display = 'block';
+  showLyric(id);
 }
 function closeLyric() {
   document.getElementById('lyricEditor').style.display = 'none';
