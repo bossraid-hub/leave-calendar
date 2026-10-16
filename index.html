@@ -19,7 +19,7 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"No
 .month-nav{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
 .month-nav h2{margin:0;color:#c55a11}
 .weekdays{display:grid;grid-template-columns:repeat(7,1fr);text-align:center;font-weight:600;color:#666;margin-bottom:6px}
-.days{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.days{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;position:relative}
 .day{aspect-ratio:1;border-radius:8px;display:flex;align-items:center;justify-content:center;cursor:pointer;background:#fff;font-size:.95rem}
 .day:hover{background:#f3f4f6}.day.other{color:#ccc;background:transparent}.day.today{box-shadow:inset 0 0 0 2px #c55a11;font-weight:700}
 .btn{padding:8px 14px;border:none;border-radius:8px;cursor:pointer;font-weight:700}
@@ -145,9 +145,10 @@ function renderCalendar() {
   const startWeek = first.getDay(), total = last.getDate();
   const daysEl = document.getElementById('days');
   daysEl.innerHTML = '';
+  const dayCells = [];
   const prevLast = new Date(y, m, 0).getDate();
   for (let i = startWeek-1; i >= 0; i--) {
-    const el = document.createElement('div'); el.className = 'day other'; el.textContent = prevLast - i; daysEl.appendChild(el);
+    const el = document.createElement('div'); el.className = 'day other'; el.textContent = prevLast - i; daysEl.appendChild(el); dayCells.push(null);
   }
   const todayStr = formatDate(new Date());
   for (let d = 1; d <= total; d++) {
@@ -157,11 +158,36 @@ function renderCalendar() {
     el.textContent = d;
     el.onclick = () => openEventModal(ds);
     daysEl.appendChild(el);
+    dayCells.push(ds);
   }
-  const remain = 42 - (startWeek + total);
+  const remain = 42 - dayCells.length;
   for (let d = 1; d <= remain; d++) {
-    const el = document.createElement('div'); el.className = 'day other'; el.textContent = d; daysEl.appendChild(el);
+    const el = document.createElement('div'); el.className = 'day other'; el.textContent = d; daysEl.appendChild(el); dayCells.push(null);
   }
+
+  const monthStart = formatDate(new Date(y, m, 1));
+  const monthEnd = formatDate(new Date(y, m, total));
+  events.forEach(ev => {
+    if (ev.end < monthStart || ev.start > monthEnd) return;
+    const startIdx = dayCells.findIndex(ds => ds && ds >= ev.start);
+    const endIdx = dayCells.findLastIndex(ds => ds && ds <= ev.end);
+    if (startIdx < 0 || endIdx < 0) return;
+    const startEl = daysEl.children[startIdx];
+    const endEl = daysEl.children[endIdx];
+    if (!startEl || !endEl) return;
+    const bar = document.createElement('div');
+    bar.className = 'event-bar';
+    bar.style.background = ev.color || '#ff6b6b';
+    bar.textContent = ev.name || '';
+    const parent = daysEl.getBoundingClientRect();
+    const s = startEl.getBoundingClientRect();
+    const e = endEl.getBoundingClientRect();
+    bar.style.left = (s.left - parent.left + 4) + 'px';
+    bar.style.width = (e.right - s.left - 8) + 'px';
+    bar.style.top = '22px';
+    daysEl.appendChild(bar);
+  });
+
   renderUpcoming();
   updateMonthOffCount();
 }
