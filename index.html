@@ -180,9 +180,19 @@ function renderCalendar() {
     el.innerHTML = `<span style="position:absolute;top:4px;right:6px;z-index:3">${d}</span>`;
     el.onclick = () => {
       if (eraserMode) {
-        events = events.filter(ev => !(ds >= ev.start && ds <= ev.end));
-        delete dayNotes[ds];
-        save(); renderCalendar();
+        const dayEvs = events.filter(ev => ds >= ev.start && ds <= ev.end);
+        if (dayEvs.length === 0) return;
+        if (dayEvs.length === 1) {
+          events = events.filter(ev => ev.id !== dayEvs[0].id);
+          save(); renderCalendar();
+          return;
+        }
+        // 多個事件，讓使用者選擇
+        const choice = prompt('這天有多個事件，請輸入要刪除的事件名稱：\n' + dayEvs.map(e => e.name).join('、'));
+        if (choice) {
+          events = events.filter(ev => !(ds >= ev.start && ds <= ev.end && ev.name === choice));
+          save(); renderCalendar();
+        }
       } else if (selectedQuick) {
         events.push({ id: Date.now(), name: selectedQuick.name, start: ds, end: ds, color: selectedQuick.color });
         save(); renderCalendar();
