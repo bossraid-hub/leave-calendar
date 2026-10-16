@@ -123,6 +123,12 @@ let events = [];
 let dayNotes = {};
 let recurrings = [];
 let selectedQuick = null;
+let quickPresets = [
+  { name: '休假', color: '#ff6b6b' },
+  { name: '出國', color: '#3b82f6' },
+  { name: '特休', color: '#10b981' },
+  { name: '補休', color: '#f59e0b' }
+];
 let eraserMode = false;
 let editingDate = null;
 const statusEl = document.getElementById('cloudSyncStatus');
@@ -132,7 +138,7 @@ function loadLocal() {
     const data = JSON.parse(localStorage.getItem('leave_calendar_data') || '{}');
     if (data.events) events = data.events;
     if (data.dayNotes) dayNotes = data.dayNotes;
-    if (data.recurrings) recurrings = data.recurrings;
+    if (data.quickPresets) quickPresets = data.quickPresets;
   } catch(e) {}
 }
 function saveLocal() {
@@ -152,6 +158,7 @@ dbRef.on('value', snap => {
     events = val.events || events;
     dayNotes = val.dayNotes || dayNotes;
     recurrings = val.recurrings || recurrings;
+    if (val.quickPresets) quickPresets = val.quickPresets;
   }
   statusEl.textContent = '☁️ 已連線';
   renderCalendar();
@@ -228,24 +235,53 @@ function renderCalendar() {
 }
 
 function renderQuickBar() {
-  const presets = [
-    { name: '休假', color: '#ff6b6b' },
-    { name: '出國', color: '#3b82f6' },
-    { name: '特休', color: '#10b981' },
-    { name: '補休', color: '#f59e0b' }
-  ];
   const bar = document.getElementById('quickBar');
   if (!bar) return;
-  bar.innerHTML = presets.map(p =>
+  bar.innerHTML = quickPresets.map(p =>
     `<button class="btn btn-sm" style="background:${p.color};color:#fff;border:${selectedQuick && selectedQuick.name===p.name?'3px solid #fff':'none'};box-shadow:${selectedQuick && selectedQuick.name===p.name?'0 0 0 2px '+p.color:'none'};opacity:${selectedQuick && selectedQuick.name===p.name?'1':'0.6'}" onclick="selectQuick('${p.name}','${p.color}')">${p.name}</button>`
-  ).join('') + `<button class="btn btn-sm btn-secondary" onclick="selectQuick(null)">取消</button><button class="btn btn-sm" style="background:${eraserMode?'#dc3545':'#6c757d'};color:#fff;font-size:16px" onclick="toggleEraser()">🧽</button>`;
+  ).join('') + `<button class="btn btn-sm btn-secondary" onclick="selectQuick(null)">取消</button><button class="btn btn-sm" style="background:${eraserMode?'#dc3545':'#6c757d'};color:#fff;font-size:16px" onclick="toggleEraser()">🧽</button><button class="btn btn-sm btn-secondary" onclick="openQuickManage()">管理</button>`;
 }
 function selectQuick(name, color) {
   selectedQuick = name ? { name, color } : null;
   eraserMode = false;
   renderQuickBar();
 }
-function toggleEraser() {
+function openQuickManage() {
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay active';
+  let html = quickPresets.map((p, i) => `
+    <div style="display:flex;align-items:center;gap:8px;margin:6px 0">
+      <div style="width:20px;height:20px;border-radius:4px;background:${p.color}"></div>
+      <span style="flex:1">${p.name}</span>
+      <button class="btn btn-sm btn-danger" onclick="quickPresets.splice(${i},1);save();renderQuickBar();this.closest('.modal-overlay').remove();openQuickManage();">刪除</button>
+    </div>
+  `).join('');
+  modal.innerHTML = `
+    <div class="modal-card" style="max-width:380px">
+      <h3 style="margin-top:0;color:#c55a11">管理快捷</h3>
+      ${html || '<div style="color:#999">還沒有快捷</div>'}
+      <div style="margin-top:16px;padding-top:12px;border-top:1px solid #eee">
+        <div style="display:flex;gap:6px;margin-bottom:8px">
+          <input type="text" id="newPresetName" placeholder="名稱" style="flex:1;padding:6px;border-radius:6px;border:1px solid #ddd">
+          <input type="color" id="newPresetColor" value="#ff6b6b" style="width:40px;height:32px;border:none">
+        </div>
+        <button class="btn btn-sm btn-primary" onclick="addQuickPreset()">新增</button>
+      </div>
+      <div style="margin-top:16px;text-align:right">
+        <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">關閉</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+}
+function addQuickPreset() {
+  const name = document.getElementById('newPresetName').value.trim();
+  const color = document.getElementById('newPresetColor').value;
+  if (!name) return;
+  quickPresets.push({ name, color });
+  save(); renderQuickBar();
+  document.querySelector('.modal-overlay.active')?.remove();
+  openQuickManage();
+}
   eraserMode = !eraserMode;
   selectedQuick = null;
   renderQuickBar();
