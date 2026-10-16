@@ -107,6 +107,23 @@
       <div class="bg-thumbs" id="bannerThumbsContainer"></div>
     </div>
     <div class="bg-setting-panel">
+      <strong>左右大背景</strong>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:8px;">
+        <div>
+          左側<br>
+          <input type="file" id="leftSideFile" accept="image/*" style="width:100%; margin:4px 0;">
+          <input type="text" id="leftSideUrl" placeholder="或貼網址" style="width:100%; padding:6px; margin-bottom:4px;">
+          <button class="btn btn-sm btn-secondary" onclick="setSide('left')">套用左</button>
+        </div>
+        <div>
+          右側<br>
+          <input type="file" id="rightSideFile" accept="image/*" style="width:100%; margin:4px 0;">
+          <input type="text" id="rightSideUrl" placeholder="或貼網址" style="width:100%; padding:6px; margin-bottom:4px;">
+          <button class="btn btn-sm btn-secondary" onclick="setSide('right')">套用右</button>
+        </div>
+      </div>
+    </div>
+    <div class="bg-setting-panel">
       <strong>輪播設定</strong>
       <label style="cursor:pointer;"><input type="checkbox" id="slideshowToggle"> 啟用自動輪播</label>
       <div style="margin-top:8px;">
@@ -159,7 +176,8 @@ let recurrings = [];
 // 背景資料（照原本網站）
 let bgImages = [];
 let bannerImages = [];
-let slideshowActive = false;
+let sideLeft = '';
+let sideRight = '';
 let slideshowTime = 10000;
 let currentBgIndex = 0;
 let currentBannerIndex = 0;
@@ -181,7 +199,7 @@ function loadLocal() {
 }
 function saveLocal() {
   localStorage.setItem('leave_calendar_data', JSON.stringify({
-    leaveTypes, leaves, recurrings, bgImages, bannerImages, slideshowActive, slideshowTime
+    leaveTypes, leaves, recurrings, bgImages, bannerImages, slideshowActive, slideshowTime, sideLeft, sideRight
   }));
 }
 function saveCloud() {
@@ -207,7 +225,8 @@ dbRef.on('value', snap => {
     bgImages = val.bgImages || bgImages;
     bannerImages = val.bannerImages || bannerImages;
     slideshowActive = val.slideshowActive || false;
-    slideshowTime = val.slideshowTime || 10000;
+    sideLeft = val.sideLeft || sideLeft;
+    sideRight = val.sideRight || sideRight;
     saveLocal();
     renderAll();
   }
@@ -332,6 +351,8 @@ function updateGalleryDisplay() {
   } else {
     topImg.src = "";
   }
+  if (sideLeft) document.getElementById('fullSideLeft').style.backgroundImage = `url('${sideLeft}')`;
+  if (sideRight) document.getElementById('fullSideRight').style.backgroundImage = `url('${sideRight}')`;
   renderThumbnails();
 }
 
@@ -434,7 +455,43 @@ document.getElementById('bannerFileInput').onchange = function(e) {
   };
   reader.readAsDataURL(file);
 };
-document.getElementById('btnAddBannerUrl').onclick = function() {
+function setSide(side) {
+  const url = document.getElementById(side + 'SideUrl').value.trim();
+  if (url) {
+    if (side === 'left') sideLeft = url;
+    else sideRight = url;
+    save();
+    updateGalleryDisplay();
+    document.getElementById(side + 'SideUrl').value = '';
+  }
+}
+
+document.getElementById('leftSideFile').onchange = function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(event) {
+    sideLeft = event.target.result;
+    save();
+    updateGalleryDisplay();
+    e.target.value = '';
+    alert('左側大背景已套用');
+  };
+  reader.readAsDataURL(file);
+};
+document.getElementById('rightSideFile').onchange = function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(event) {
+    sideRight = event.target.result;
+    save();
+    updateGalleryDisplay();
+    e.target.value = '';
+    alert('右側大背景已套用');
+  };
+  reader.readAsDataURL(file);
+};
   const url = document.getElementById('bannerUrlInput').value.trim();
   if (url) { bannerImages.push(url); save(); updateGalleryDisplay(); document.getElementById('bannerUrlInput').value = ''; }
 };
