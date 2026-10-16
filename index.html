@@ -14,7 +14,8 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"No
 #cloudSyncStatus.syncing{background:rgba(255,193,7,.9);color:#333}
 .full-side-bg{position:fixed;top:0;height:100vh;width:30vw;z-index:0;background-size:cover;background-position:center}
 .full-side-left{left:0}.full-side-right{right:0}
-@media(max-width:1350px){.full-side-bg{display:none}}
+.center-long-bg{position:fixed;top:0;left:30vw;width:40vw;height:100vh;z-index:1;background-size:cover;background-position:center top;background-repeat:no-repeat}
+@media(max-width:1350px){.full-side-bg{display:none}.center-long-bg{left:0;width:100vw}}
 .top-banner{width:100%;max-width:900px;height:160px;background:rgba(0,0,0,.4);border-radius:16px;overflow:hidden;margin:16px auto;position:relative;z-index:2}
 .top-banner img{width:100%;height:100%;object-fit:cover}
 .mid-banner{width:100%;max-width:900px;height:200px;background:rgba(0,0,0,.3);border-radius:16px;overflow:hidden;margin:0 auto 16px;position:relative;z-index:2}
@@ -47,6 +48,7 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"No
 <div id="cloudSyncStatus">☁ 本地模式</div>
 <div class="full-side-bg full-side-left" id="fullSideLeft"></div>
 <div class="full-side-bg full-side-right" id="fullSideRight"></div>
+<div class="center-long-bg" id="centerLongBg"></div>
 <div class="top-banner"><img id="topBannerImg" src="" alt=""></div>
 <div class="mid-banner"><img id="midBannerImg" src="" alt=""></div>
 <div class="container">
@@ -96,6 +98,14 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"No
         <button class="btn btn-sm btn-secondary" onclick="addMidUrl()">新增</button>
       </div>
       <div class="bg-thumbs" id="midThumbs"></div>
+    </div>
+    <div class="bg-setting-panel">
+      <strong>中間長版圖片（延伸到底）</strong>
+      <input type="file" id="longFileInput" accept="image/*" style="margin:8px 0;width:100%">
+      <div style="display:flex;gap:8px">
+        <input type="text" id="longUrlInput" placeholder="或貼圖片網址" style="flex:1;padding:6px">
+        <button class="btn btn-sm btn-secondary" onclick="setLongBg()">套用</button>
+      </div>
     </div>
     <div class="bg-setting-panel">
       <strong>左右大背景</strong>
@@ -187,6 +197,7 @@ let quickPresets = [
 ];
 let bannerImages = [];
 let midImages = [];
+let longBg = '';
 let sideLeft = '', sideRight = '';
 const statusEl = document.getElementById('cloudSyncStatus');
 
@@ -199,17 +210,18 @@ function loadLocal() {
     if (data.quickPresets) quickPresets = data.quickPresets;
     if (data.bannerImages) bannerImages = data.bannerImages;
     if (data.midImages) midImages = data.midImages;
+    if (data.longBg) longBg = data.longBg;
     if (data.sideLeft) sideLeft = data.sideLeft;
     if (data.sideRight) sideRight = data.sideRight;
   } catch(e) {}
 }
 function saveLocal() {
-  try { localStorage.setItem('leave_calendar_data', JSON.stringify({ events, dayNotes, recurrings, quickPresets, bannerImages, midImages, sideLeft, sideRight })); }
+  try { localStorage.setItem('leave_calendar_data', JSON.stringify({ events, dayNotes, recurrings, quickPresets, bannerImages, midImages, longBg, sideLeft, sideRight })); }
   catch(e) { localStorage.removeItem('leave_calendar_data'); }
 }
 function saveCloud() {
   statusEl.textContent = '🔄 同步中...'; statusEl.className = 'syncing';
-  dbRef.set({ events, dayNotes, recurrings, quickPresets, bannerImages, midImages, sideLeft, sideRight }).then(() => { statusEl.textContent = '☁️ 已同步'; statusEl.className = ''; }).catch(() => { statusEl.textContent = '⚠️ 同步失敗'; statusEl.className = 'syncing'; });
+  dbRef.set({ events, dayNotes, recurrings, quickPresets, bannerImages, midImages, longBg, sideLeft, sideRight }).then(() => { statusEl.textContent = '☁️ 已同步'; statusEl.className = ''; }).catch(() => { statusEl.textContent = '⚠️ 同步失敗'; statusEl.className = 'syncing'; });
 }
 function save() { saveLocal(); saveCloud(); }
 
@@ -223,6 +235,7 @@ dbRef.on('value', snap => {
     if (val.quickPresets) quickPresets = val.quickPresets;
     bannerImages = val.bannerImages || bannerImages;
     midImages = val.midImages || midImages;
+    longBg = val.longBg || longBg;
     sideLeft = val.sideLeft || sideLeft;
     sideRight = val.sideRight || sideRight;
   }
@@ -452,10 +465,11 @@ function updateBackgrounds() {
   else midImg.src = '';
   if (sideLeft) document.getElementById('fullSideLeft').style.backgroundImage = `url('${sideLeft}')`;
   if (sideRight) document.getElementById('fullSideRight').style.backgroundImage = `url('${sideRight}')`;
+  if (longBg) document.getElementById('centerLongBg').style.backgroundImage = `url('${longBg}')`;
   const thumbs = document.getElementById('bannerThumbs');
-  if (thumbs) thumbs.innerHTML = bannerImages.map((url, i) => `<div class="bg-thumb-item"><img src="${url}"><button class="bg-thumb-del" onclick="bannerImages.splice(${i},1);save();updateBackgrounds();">✕</button></div>`).join('');
+  if (thumbs) thumbs.innerHTML = bannerImages.map((url, i) => `<div class="bg-thumb-item"><img src="${url}"><button class="bg-thumb-del" onclick="bannerImages=[];save();updateBackgrounds();">✕</button></div>`).join('');
   const midThumbs = document.getElementById('midThumbs');
-  if (midThumbs) midThumbs.innerHTML = midImages.map((url, i) => `<div class="bg-thumb-item"><img src="${url}"><button class="bg-thumb-del" onclick="midImages.splice(${i},1);save();updateBackgrounds();">✕</button></div>`).join('');
+  if (midThumbs) midThumbs.innerHTML = midImages.map((url, i) => `<div class="bg-thumb-item"><img src="${url}"><button class="bg-thumb-del" onclick="midImages=[];save();updateBackgrounds();">✕</button></div>`).join('');
 }
 function addBannerUrl() {
   const u = document.getElementById('bannerUrlInput').value.trim();
@@ -464,6 +478,10 @@ function addBannerUrl() {
 function addMidUrl() {
   const u = document.getElementById('midUrlInput').value.trim();
   if (u) { midImages = [u]; save(); updateBackgrounds(); document.getElementById('midUrlInput').value = ''; }
+}
+function setLongBg() {
+  const u = document.getElementById('longUrlInput').value.trim();
+  if (u) { longBg = u; save(); updateBackgrounds(); document.getElementById('longUrlInput').value = ''; }
 }
 function setSide(which) {
   const urlEl = document.getElementById(which === 'left' ? 'leftSideUrl' : 'rightSideUrl');
@@ -476,13 +494,19 @@ function setSide(which) {
 document.getElementById('bannerFileInput').onchange = function(e) {
   const f = e.target.files[0]; if (!f) return;
   const r = new FileReader();
-  r.onload = ev => { bannerImages.push(ev.target.result); save(); updateBackgrounds(); e.target.value = ''; };
+  r.onload = ev => { bannerImages = [ev.target.result]; save(); updateBackgrounds(); e.target.value = ''; };
   r.readAsDataURL(f);
 };
 document.getElementById('midFileInput').onchange = function(e) {
   const f = e.target.files[0]; if (!f) return;
   const r = new FileReader();
-  r.onload = ev => { midImages.push(ev.target.result); save(); updateBackgrounds(); e.target.value = ''; };
+  r.onload = ev => { midImages = [ev.target.result]; save(); updateBackgrounds(); e.target.value = ''; };
+  r.readAsDataURL(f);
+};
+document.getElementById('longFileInput').onchange = function(e) {
+  const f = e.target.files[0]; if (!f) return;
+  const r = new FileReader();
+  r.onload = ev => { longBg = ev.target.result; save(); updateBackgrounds(); e.target.value = ''; };
   r.readAsDataURL(f);
 };
 document.getElementById('leftSideFile').onchange = function(e) {
@@ -503,7 +527,7 @@ function nextMonth() { currentDate.setMonth(currentDate.getMonth()+1); renderCal
 function goToday() { currentDate = new Date(); renderCalendar(); }
 
 function exportData() {
-  const blob = new Blob([JSON.stringify({ events, dayNotes, recurrings, quickPresets, bannerImages, midImages, sideLeft, sideRight }, null, 2)], {type:'application/json'});
+  const blob = new Blob([JSON.stringify({ events, dayNotes, recurrings, quickPresets, bannerImages, midImages, longBg, sideLeft, sideRight }, null, 2)], {type:'application/json'});
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = '排假資料.json'; a.click();
 }
 
