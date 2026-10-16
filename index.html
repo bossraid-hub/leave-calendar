@@ -139,6 +139,7 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"No
       <button class="btn btn-secondary" onclick="exportData()">匯出資料</button>
       <button class="btn btn-secondary" onclick="document.getElementById('importFile').click()">匯入資料</button>
       <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
+      <button class="btn btn-danger" onclick="if(confirm('確定清除所有本地快取重設？')) { localStorage.clear(); location.reload(); }">清除快取重設</button>
     </div>
   </div>
 </div>
@@ -219,19 +220,19 @@ const statusEl = document.getElementById('cloudSyncStatus');
 function loadLocal() {
   try {
     const coreData = JSON.parse(localStorage.getItem('leave_calendar_core') || '{}');
-    if (coreData.leaveTypes) leaveTypes = coreData.leaveTypes;
-    if (coreData.events) events = coreData.events;
-    if (coreData.recurrings) recurrings = coreData.recurrings;
+    if (Array.isArray(coreData.leaveTypes)) leaveTypes = coreData.leaveTypes;
+    if (Array.isArray(coreData.events)) events = coreData.events;
+    if (Array.isArray(coreData.recurrings)) recurrings = coreData.recurrings;
     if (coreData.slideshowActive !== undefined) slideshowActive = coreData.slideshowActive;
     if (coreData.slideshowTime) slideshowTime = coreData.slideshowTime;
 
     const imgData = JSON.parse(localStorage.getItem('leave_calendar_images') || '{}');
-    if (imgData.bgImages) bgImages = imgData.bgImages;
-    if (imgData.bannerImages) bannerImages = imgData.bannerImages;
-    if (imgData.sideLeft) sideLeft = imgData.sideLeft;
-    if (imgData.sideRight) sideRight = imgData.sideRight;
+    if (Array.isArray(imgData.bgImages)) bgImages = imgData.bgImages;
+    if (Array.isArray(imgData.bannerImages)) bannerImages = imgData.bannerImages;
+    if (typeof imgData.sideLeft === 'string') sideLeft = imgData.sideLeft;
+    if (typeof imgData.sideRight === 'string') sideRight = imgData.sideRight;
   } catch(e) {
-    console.error('讀取本地資料失敗', e);
+    console.error('讀取本地資料失敗，已略過', e);
   }
 }
 
@@ -241,7 +242,7 @@ function saveLocal() {
       leaveTypes, events, recurrings, slideshowActive, slideshowTime
     }));
   } catch(e) {
-    alert('儲存排假資料失敗：容量可能已滿');
+    console.error('儲存排假核心資料失敗', e);
   }
 
   try {
@@ -249,7 +250,7 @@ function saveLocal() {
       bgImages, bannerImages, sideLeft, sideRight
     }));
   } catch(e) {
-    alert('圖片容量過大！建議改用圖片網址，或清除部分相冊圖片。');
+    console.warn('圖片資料超出本地儲存容量');
   }
 }
 
@@ -258,26 +259,46 @@ function saveCloud() {
   statusEl.className = 'syncing';
   dbRef.set({ leaveTypes, events, recurrings, bgImages, bannerImages, sideLeft, sideRight, slideshowActive, slideshowTime })
     .then(() => { statusEl.textContent = '☁️ 已同步'; statusEl.className = ''; })
-    .catch(() => { statusEl.textContent = '⚠️ 同步失敗（圖片可能太大）'; statusEl.className = 'syncing'; });
+    .catch(() => { statusEl.textContent = '⚠️ 同步失敗'; statusEl.className = 'syncing'; });
 }
 function save() { saveLocal(); saveCloud(); }
 
 loadLocal();
 dbRef.on('value', snap => {
-  const val = snap.val();
-  if (val) {
-    leaveTypes = val.leaveTypes || leaveTypes;
-    leaveTypes.forEach(t => {
-      if (t.name === '休假' || t.id === 'off' || t.id === 'sick') {
-        t.color = '#ff6b6b';
-        t.name = '休假';
-        t.id = 'off';
-        t.emoji = '😴';
-      }
-    });
-    events = val.events || events;
-    recurrings = val.recurrings || recurrings;
-    bgImages = val.bgImages || bgImages;
-    bannerImages = val.bannerImages || bannerImages;
-    sideLeft = val.sideLeft || sideLeft;
-    sideRight
+  try {
+    const val = snap.val();
+    if (val) {
+      if (Array.isArray(val.leaveTypes)) leaveTypes = val.leaveTypes;
+      if (Array.isArray(val.events)) events = val.events;
+      if (Array.isArray(val.recurrings)) recurrings = val.recurrings;
+      if (Array.isArray(val.bgImages)) bgImages = val.bgImages;
+      if (Array.isArray(val.bannerImages)) bannerImages = val.bannerImages;
+      if (typeof val.sideLeft === 'string') sideLeft = val.sideLeft;
+      if (typeof val.sideRight === 'string') sideRight = val.sideRight;
+      slideshowActive = val.slideshowActive || false;
+      slideshowTime = val.slideshowTime || 10000;
+      saveLocal();
+      renderAll();
+    }
+    statusEl.textContent = '☁️ 已連線';
+  } catch (err) {
+    console.error('雲端資料同步渲染錯誤', err);
+  }
+});
+
+function formatDate(d) { return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
+
+function renderCalendar() {
+  try {
+    const y = currentDate.getFullYear(), m = currentDate.getMonth();
+    const monthLabelEl = document.getElementById('monthLabel');
+    if (monthLabelEl) monthLabelEl.textContent = y + '年 ' + (m+1) + '月';
+    
+    const first = new Date(y, m, 1), last = new Date(y, m+1, 0);
+    const startWeek = first.getDay(), total = last.getDate();
+    const daysEl = document.getElementById('days');
+    if (!daysEl) return;
+    daysEl.innerHTML = '';
+
+    const dayCells = [];
+    const prevLast
