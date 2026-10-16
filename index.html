@@ -249,6 +249,14 @@ dbRef.on('value', snap => {
   const val = snap.val();
   if (val) {
     leaveTypes = val.leaveTypes || leaveTypes;
+    leaveTypes.forEach(t => {
+      if (t.name === '休假' || t.id === 'off' || t.id === 'sick') {
+        t.color = '#ff6b6b';
+        t.name = '休假';
+        t.id = 'off';
+        t.emoji = '😴';
+      }
+    });
     events = val.events || events;
     recurrings = val.recurrings || recurrings;
     bgImages = val.bgImages || bgImages;
