@@ -399,7 +399,19 @@ function openEventModal(dateStr, eventId) {
   });
   document.getElementById('eventModal').classList.add('active');
 }
+function closeEventModal() { 
+  document.getElementById('eventModal').classList.remove('active'); 
+  editingEventId = null; 
+}
+
 document.getElementById('saveEventBtn').onclick = function() {
+  try {
+    saveEvent();
+  } catch (err) {
+    alert('儲存時發生錯誤：' + err.message);
+    console.error(err);
+  }
+};
   try {
     saveEvent();
   } catch (err) {
