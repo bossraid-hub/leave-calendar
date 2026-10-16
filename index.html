@@ -62,7 +62,13 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"No
   <div class="modal-card">
     <h3 id="modalDate" style="margin-top:0;color:#c55a11"></h3>
     <div style="margin-bottom:10px">
-      <label>事件名稱</label>
+      <label>快捷</label>
+      <div style="margin-top:4px">
+        <button type="button" class="btn btn-sm" style="background:#ff6b6b;color:#fff;margin-right:6px" onclick="document.getElementById('eventName').value='休假';document.getElementById('eventColor').value='#ff6b6b'">休假</button>
+        <button type="button" class="btn btn-sm" style="background:#3b82f6;color:#fff;margin-right:6px" onclick="document.getElementById('eventName').value='出國';document.getElementById('eventColor').value='#3b82f6'">出國</button>
+        <button type="button" class="btn btn-sm" style="background:#10b981;color:#fff" onclick="document.getElementById('eventName').value='特休';document.getElementById('eventColor').value='#10b981'">特休</button>
+      </div>
+    </div>
       <input type="text" id="eventName" placeholder="例如：休假、出國" style="width:100%;padding:8px;margin-top:4px;border-radius:6px;border:1px solid #ddd">
     </div>
     <div style="margin-bottom:10px">
@@ -147,19 +153,18 @@ function renderCalendar() {
   const monthEnd = formatDate(new Date(y, m, total));
   events.forEach(ev => {
     if (ev.end < monthStart || ev.start > monthEnd) return;
-    // 找到這個事件在當月實際覆蓋的第一個與最後一個格子
-    let startIdx = -1, endIdx = -1;
-    for (let i = 0; i < dayCells.length; i++) {
-      const ds = dayCells[i];
-      if (!ds) continue;
+    // 計算這個事件在當月實際覆蓋的格子範圍
+    let startCell = -1, endCell = -1;
+    dayCells.forEach((ds, i) => {
+      if (!ds) return;
       if (ds >= ev.start && ds <= ev.end) {
-        if (startIdx === -1) startIdx = i;
-        endIdx = i;
+        if (startCell === -1) startCell = i;
+        endCell = i;
       }
-    }
-    if (startIdx < 0 || endIdx < 0) return;
-    const startEl = daysEl.children[startIdx];
-    const endEl = daysEl.children[endIdx];
+    });
+    if (startCell < 0) return;
+    const startEl = daysEl.children[startCell];
+    const endEl = daysEl.children[endCell];
     if (!startEl || !endEl) return;
     const bar = document.createElement('div');
     bar.className = 'event-bar';
@@ -168,9 +173,9 @@ function renderCalendar() {
     const parent = daysEl.getBoundingClientRect();
     const s = startEl.getBoundingClientRect();
     const e = endEl.getBoundingClientRect();
-    bar.style.left = (s.left - parent.left + 4) + 'px';
-    bar.style.width = (e.right - s.left - 8) + 'px';
-    bar.style.top = '28px';
+    bar.style.left = (s.left - parent.left + 6) + 'px';
+    bar.style.width = (e.right - s.left - 12) + 'px';
+    bar.style.top = '6px';
     daysEl.appendChild(bar);
   });
 
