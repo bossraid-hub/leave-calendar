@@ -174,7 +174,18 @@ const statusEl = document.getElementById('cloudSyncStatus');
 function loadLocal() {
   try {
     const data = JSON.parse(localStorage.getItem('leave_calendar_data') || '{}');
-    if (data.leaveTypes) leaveTypes = data.leaveTypes;
+    if (data.leaveTypes) {
+      leaveTypes = data.leaveTypes;
+      // 強制把舊的「病假」改成「休假」
+      leaveTypes.forEach(t => {
+        if (t.name === '病假' || t.id === 'sick') {
+          t.name = '休假';
+          t.id = 'off';
+          t.emoji = '😴';
+          t.color = '#6b7280';
+        }
+      });
+    }
     if (data.leaves) leaves = data.leaves;
     if (data.recurrings) recurrings = data.recurrings;
     if (data.bgImages) bgImages = data.bgImages;
@@ -397,14 +408,34 @@ document.getElementById('btnSetRight').onclick = function() {
 };
 document.getElementById('leftSideFile').onchange = function(e) {
   const file = e.target.files[0]; if (!file) return;
+  if (file.size > 500 * 1024) {
+    alert('檔案太大，請改用圖片網址');
+    return;
+  }
   const reader = new FileReader();
-  reader.onload = function(event) { sideLeft = event.target.result; save(); updateGalleryDisplay(); e.target.value = ''; };
+  reader.onload = function(event) {
+    sideLeft = event.target.result;
+    updateGalleryDisplay();
+    save();
+    e.target.value = '';
+    alert('左側大背景已套用');
+  };
   reader.readAsDataURL(file);
 };
 document.getElementById('rightSideFile').onchange = function(e) {
   const file = e.target.files[0]; if (!file) return;
+  if (file.size > 500 * 1024) {
+    alert('檔案太大，請改用圖片網址');
+    return;
+  }
   const reader = new FileReader();
-  reader.onload = function(event) { sideRight = event.target.result; save(); updateGalleryDisplay(); e.target.value = ''; };
+  reader.onload = function(event) {
+    sideRight = event.target.result;
+    updateGalleryDisplay();
+    save();
+    e.target.value = '';
+    alert('右側大背景已套用');
+  };
   reader.readAsDataURL(file);
 };
 
