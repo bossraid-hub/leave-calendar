@@ -555,12 +555,23 @@ document.addEventListener('keydown', e => {
   }
 });
 function showLyric(id) {
-  const s = songs.find(x => x.id === id);
+  const s = songs.find(x => String(x.id) === String(id));
   if (!s) return;
-  currentSongIndex = songs.findIndex(x => x.id === id);
-  document.getElementById('lyricDisplay').innerHTML = `<div style="font-weight:700;margin-bottom:8px;color:#c55a11">${s.title}</div><div class="lyric-box">${s.lyric || '<span style="color:#999">還沒有歌詞</span>'}</div>`;
-  document.getElementById('lyricEditor').style.display = 'none';
-  document.querySelectorAll('#songList > div').forEach((d, i) => d.style.background = i === currentSongIndex ? 'rgba(197,90,17,.1)' : '');
+  currentSongIndex = songs.findIndex(x => String(x.id) === String(id));
+  const display = document.getElementById('lyricDisplay');
+  if (display) display.innerHTML = `<div style="font-weight:700;margin-bottom:8px;color:#c55a11">${s.title}</div><div class="lyric-box">${s.lyric || '<span style="color:#999">還沒有歌詞</span>'}</div>`;
+}
+function openLyric(id) {
+  const s = songs.find(x => String(x.id) === String(id));
+  if (!s) { alert('找不到歌曲'); return; }
+  editingSongId = s.id;
+  document.getElementById('lyricTitle').textContent = s.title;
+  document.getElementById('lyricText').value = s.lyric || '';
+  document.getElementById('lyricEditor').style.display = 'block';
+}
+  const checks = document.querySelectorAll('.song-check');
+  const allChecked = [...checks].every(c => c.checked);
+  checks.forEach(c => c.checked = !allChecked);
 }
 function toggleSelectAll() {
   const checks = document.querySelectorAll('.song-check');
@@ -568,6 +579,12 @@ function toggleSelectAll() {
   checks.forEach(c => c.checked = !allChecked);
 }
 function deleteSelected() {
+  const ids = [...document.querySelectorAll('.song-check:checked')].map(c => Number(c.dataset.id));
+  if (!ids.length) return;
+  if (!confirm(`刪除 ${ids.length} 首歌？`)) return;
+  songs = songs.filter(s => !ids.includes(s.id));
+  save(); renderSongs();
+}
   const ids = [...document.querySelectorAll('.song-check:checked')].map(c => Number(c.dataset.id));
   if (!ids.length) return;
   if (!confirm(`刪除 ${ids.length} 首歌？`)) return;
