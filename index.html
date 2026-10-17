@@ -62,7 +62,8 @@ body.dark .bg-setting-panel{background:#333;color:#eee}
   <div class="tabs">
     <button class="tab-btn active" data-tab="tab-calendar">🗓️ 月曆</button>
     <button class="tab-btn" data-tab="tab-recurring">🎂 週期性事件</button>
-    <button class="tab-btn" data-tab="tab-concert">🎤 歌單</button>
+    <button class="tab-btn" data-tab="tab-concert">🎤 歌單管理</button>
+    <button class="tab-btn" data-tab="tab-lyrics">📖 歌單</button>
     <button class="tab-btn" data-tab="tab-settings">⚙️ 設定 / 背景</button>
     <button class="btn btn-sm btn-secondary" id="darkToggle" onclick="toggleDark()">🌙</button>
   </div>
@@ -88,34 +89,40 @@ body.dark .bg-setting-panel{background:#333;color:#eee}
   </div>
 
   <div id="tab-concert" class="tab-content">
-    <h3 style="color:#1f497d;margin-top:0">歌單</h3>
-    <div style="display:flex;gap:16px;min-height:500px">
-      <div style="width:280px;flex-shrink:0;border-right:1px solid #eee;padding-right:12px">
-        <div style="display:flex;gap:6px;margin-bottom:8px">
-          <input type="text" id="newSongName" placeholder="歌曲名稱" style="flex:1;padding:6px;border-radius:6px;border:1px solid #ddd">
-          <button class="btn btn-sm btn-primary" onclick="addSong()">新增</button>
-        </div>
-        <div style="display:flex;gap:6px;margin-bottom:8px">
-          <button class="btn btn-sm btn-secondary" onclick="toggleSelectAll()">全選</button>
-          <button class="btn btn-sm btn-danger" onclick="deleteSelected()">🗑️ 刪除勾選</button>
-        </div>
-        <div id="songList" style="max-height:420px;overflow-y:auto"></div>
-        <details style="margin-top:10px">
-          <summary style="cursor:pointer;font-size:13px">批量新增</summary>
-          <textarea id="batchSongs" rows="4" style="width:100%;margin-top:6px;padding:6px;border-radius:6px;border:1px solid #ddd;font-size:13px" placeholder="每行一首"></textarea>
-          <button class="btn btn-sm btn-secondary" style="margin-top:4px" onclick="batchAddSongs()">加入</button>
-        </details>
+    <h3 style="color:#1f497d;margin-top:0">歌單管理</h3>
+    <div style="margin-bottom:12px;display:flex;gap:8px">
+      <input type="text" id="newSongName" placeholder="歌曲名稱" style="flex:1;padding:8px;border-radius:8px;border:1px solid #ddd">
+      <button class="btn btn-primary" onclick="addSong()">新增</button>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:12px">
+      <button class="btn btn-sm btn-secondary" onclick="toggleSelectAll()">全選</button>
+      <button class="btn btn-sm btn-danger" onclick="deleteSelected()">🗑️ 刪除勾選</button>
+    </div>
+    <div id="songList"></div>
+    <details style="margin-top:16px">
+      <summary style="cursor:pointer;font-weight:600">批量新增</summary>
+      <textarea id="batchSongs" rows="5" style="width:100%;margin-top:8px;padding:8px;border-radius:8px;border:1px solid #ddd" placeholder="每行一首"></textarea>
+      <button class="btn btn-sm btn-secondary" style="margin-top:6px" onclick="batchAddSongs()">加入</button>
+    </details>
+    <div id="lyricEditor" style="display:none;margin-top:16px;padding:12px;background:rgba(255,255,255,.6);border-radius:10px">
+      <strong id="lyricTitle"></strong>
+      <textarea id="lyricText" class="lyric-box" rows="8" style="width:100%;margin-top:8px;padding:10px;border-radius:8px;border:1px solid #ddd" placeholder="編輯歌詞..."></textarea>
+      <div style="margin-top:8px;text-align:right">
+        <button class="btn btn-sm btn-secondary" onclick="closeLyric()">取消</button>
+        <button class="btn btn-sm btn-primary" onclick="saveLyric()">儲存</button>
       </div>
-      <div style="flex:1;min-width:0">
+    </div>
+  </div>
+
+  <div id="tab-lyrics" class="tab-content">
+    <h3 style="color:#1f497d;margin-top:0">歌詞</h3>
+    <div style="display:flex;gap:16px;min-height:500px">
+      <div style="width:240px;flex-shrink:0;border-right:1px solid #eee;padding-right:12px">
+        <div id="viewSongList" style="max-height:480px;overflow-y:auto"></div>
+      </div>
+      <div style="flex:1">
         <div id="lyricDisplay" style="background:rgba(255,255,255,.7);border-radius:12px;padding:16px;min-height:300px">
           <div style="color:#999">點左邊歌曲查看歌詞</div>
-        </div>
-        <div id="lyricEditor" style="display:none;margin-top:12px">
-          <textarea id="lyricText" class="lyric-box" rows="8" style="width:100%;padding:10px;border-radius:8px;border:1px solid #ddd" placeholder="編輯歌詞..."></textarea>
-          <div style="margin-top:6px;text-align:right">
-            <button class="btn btn-sm btn-secondary" onclick="closeLyric()">取消</button>
-            <button class="btn btn-sm btn-primary" onclick="saveLyric()">儲存</button>
-          </div>
         </div>
       </div>
     </div>
@@ -516,18 +523,25 @@ function deleteRecurring(i) { if (confirm('刪除？')) { recurrings.splice(i, 1
 
 function renderSongs() {
   const el = document.getElementById('songList');
-  if (!songs.length) { el.innerHTML = '<div style="color:#999;padding:8px">還沒有歌曲</div>'; return; }
+  if (!songs.length) { el.innerHTML = '<div style="color:#999">還沒有歌曲</div>'; return; }
   el.innerHTML = songs.map(s => `
-    <div style="display:flex;align-items:center;gap:6px;padding:6px 4px;border-bottom:1px solid #eee;cursor:pointer" onclick="showLyric(${s.id})">
-      <input type="checkbox" class="song-check" data-id="${s.id}" onclick="event.stopPropagation()">
+    <div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #eee">
+      <input type="checkbox" class="song-check" data-id="${s.id}">
       <span style="flex:1;font-weight:600">${s.title}</span>
-      <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation();openLyric('${s.id}')">編輯</button>
+      <button class="btn btn-sm btn-secondary" onclick="openLyric('${s.id}')">編輯歌詞</button>
     </div>
+  `).join('');
+}
+function renderViewSongs() {
+  const el = document.getElementById('viewSongList');
+  if (!songs.length) { el.innerHTML = '<div style="color:#999">還沒有歌曲</div>'; return; }
+  el.innerHTML = songs.map(s => `
+    <div style="padding:8px 4px;border-bottom:1px solid #eee;cursor:pointer;font-weight:600" onclick="showLyric('${s.id}')">${s.title}</div>
   `).join('');
 }
 let currentSongIndex = -1;
 document.addEventListener('keydown', e => {
-  if (document.getElementById('tab-concert').classList.contains('active') && !e.target.matches('input, textarea')) {
+  if ((document.getElementById('tab-lyrics').classList.contains('active') || document.getElementById('tab-concert').classList.contains('active')) && !e.target.matches('input, textarea')) {
     if (e.key === 'ArrowDown' || e.key === 'j') {
       e.preventDefault();
       currentSongIndex = Math.min(currentSongIndex + 1, songs.length - 1);
@@ -674,6 +688,7 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.classList.add('active');
     if (btn.dataset.tab === 'tab-recurring') renderRecurring();
     if (btn.dataset.tab === 'tab-concert') renderSongs();
+    if (btn.dataset.tab === 'tab-lyrics') renderViewSongs();
   };
 });
 
