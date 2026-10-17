@@ -115,7 +115,7 @@ body.dark .bg-setting-panel{background:#333;color:#eee}
   </div>
 
   <div id="tab-lyrics" class="tab-content">
-    <h3 style="color:#1f497d;margin-top:0">歌詞</h3>
+    <h3 style="color:#1f497d;margin-top:0">歌單</h3>
     <div style="display:flex;gap:16px;min-height:500px">
       <div style="width:240px;flex-shrink:0;border-right:1px solid #eee;padding-right:12px">
         <div id="viewSongList" style="max-height:480px;overflow-y:auto"></div>
@@ -247,6 +247,7 @@ let sideLeft = '', sideRight = '';
 let darkMode = false;
 let songs = [];
 let editingSongId = null;
+let currentSongIndex = -1;
 const statusEl = document.getElementById('cloudSyncStatus');
 
 function loadLocal() {
@@ -539,59 +540,6 @@ function renderViewSongs() {
     <div style="padding:8px 4px;border-bottom:1px solid #eee;cursor:pointer;font-weight:600" onclick="showLyric('${s.id}')">${s.title}</div>
   `).join('');
 }
-let currentSongIndex = -1;
-document.addEventListener('keydown', e => {
-  if ((document.getElementById('tab-lyrics').classList.contains('active') || document.getElementById('tab-concert').classList.contains('active')) && !e.target.matches('input, textarea')) {
-    if (e.key === 'ArrowDown' || e.key === 'j') {
-      e.preventDefault();
-      currentSongIndex = Math.min(currentSongIndex + 1, songs.length - 1);
-      if (songs[currentSongIndex]) showLyric(songs[currentSongIndex].id);
-    }
-    if (e.key === 'ArrowUp' || e.key === 'k') {
-      e.preventDefault();
-      currentSongIndex = Math.max(currentSongIndex - 1, 0);
-      if (songs[currentSongIndex]) showLyric(songs[currentSongIndex].id);
-    }
-  }
-});
-function showLyric(id) {
-  const s = songs.find(x => String(x.id) === String(id));
-  if (!s) return;
-  currentSongIndex = songs.findIndex(x => String(x.id) === String(id));
-  const display = document.getElementById('lyricDisplay');
-  if (display) display.innerHTML = `<div style="font-weight:700;margin-bottom:8px;color:#c55a11">${s.title}</div><div class="lyric-box">${s.lyric || '<span style="color:#999">還沒有歌詞</span>'}</div>`;
-}
-function openLyric(id) {
-  const s = songs.find(x => String(x.id) === String(id));
-  if (!s) { alert('找不到歌曲'); return; }
-  editingSongId = s.id;
-  document.getElementById('lyricTitle').textContent = s.title;
-  document.getElementById('lyricText').value = s.lyric || '';
-  document.getElementById('lyricEditor').style.display = 'block';
-}
-  const checks = document.querySelectorAll('.song-check');
-  const allChecked = [...checks].every(c => c.checked);
-  checks.forEach(c => c.checked = !allChecked);
-}
-function toggleSelectAll() {
-  const checks = document.querySelectorAll('.song-check');
-  const allChecked = [...checks].every(c => c.checked);
-  checks.forEach(c => c.checked = !allChecked);
-}
-function deleteSelected() {
-  const ids = [...document.querySelectorAll('.song-check:checked')].map(c => Number(c.dataset.id));
-  if (!ids.length) return;
-  if (!confirm(`刪除 ${ids.length} 首歌？`)) return;
-  songs = songs.filter(s => !ids.includes(s.id));
-  save(); renderSongs();
-}
-  const ids = [...document.querySelectorAll('.song-check:checked')].map(c => Number(c.dataset.id));
-  if (!ids.length) return;
-  if (!confirm(`刪除 ${ids.length} 首歌？`)) return;
-  songs = songs.filter(s => !ids.includes(s.id));
-  save(); renderSongs();
-  document.getElementById('lyricDisplay').innerHTML = '<div style="color:#999">點左邊歌曲查看歌詞</div>';
-}
 function addSong() {
   const input = document.getElementById('newSongName');
   const title = input.value.trim();
@@ -607,13 +555,25 @@ function batchAddSongs() {
   document.getElementById('batchSongs').value = '';
   save(); renderSongs();
 }
+function toggleSelectAll() {
+  const checks = document.querySelectorAll('.song-check');
+  const allChecked = [...checks].every(c => c.checked);
+  checks.forEach(c => c.checked = !allChecked);
+}
+function deleteSelected() {
+  const ids = [...document.querySelectorAll('.song-check:checked')].map(c => Number(c.dataset.id));
+  if (!ids.length) return;
+  if (!confirm(`刪除 ${ids.length} 首歌？`)) return;
+  songs = songs.filter(s => !ids.includes(s.id));
+  save(); renderSongs();
+}
 function openLyric(id) {
   const s = songs.find(x => String(x.id) === String(id));
   if (!s) { alert('找不到歌曲'); return; }
   editingSongId = s.id;
+  document.getElementById('lyricTitle').textContent = s.title;
   document.getElementById('lyricText').value = s.lyric || '';
   document.getElementById('lyricEditor').style.display = 'block';
-  showLyric(s.id);
 }
 function closeLyric() {
   document.getElementById('lyricEditor').style.display = 'none';
@@ -625,6 +585,28 @@ function saveLyric() {
   if (s) s.lyric = document.getElementById('lyricText').value;
   save(); closeLyric(); renderSongs();
 }
+function showLyric(id) {
+  const s = songs.find(x => String(x.id) === String(id));
+  if (!s) return;
+  currentSongIndex = songs.findIndex(x => String(x.id) === String(id));
+  const display = document.getElementById('lyricDisplay');
+  if (display) display.innerHTML = `<div style="font-weight:700;margin-bottom:8px;color:#c55a11">${s.title}</div><div class="lyric-box">${s.lyric || '<span style="color:#999">還沒有歌詞</span>'}</div>`;
+}
+
+document.addEventListener('keydown', e => {
+  if (document.getElementById('tab-lyrics').classList.contains('active') && !e.target.matches('input, textarea')) {
+    if (e.key === 'ArrowDown' || e.key === 'j') {
+      e.preventDefault();
+      currentSongIndex = Math.min(currentSongIndex + 1, songs.length - 1);
+      if (songs[currentSongIndex]) showLyric(songs[currentSongIndex].id);
+    }
+    if (e.key === 'ArrowUp' || e.key === 'k') {
+      e.preventDefault();
+      currentSongIndex = Math.max(currentSongIndex - 1, 0);
+      if (songs[currentSongIndex]) showLyric(songs[currentSongIndex].id);
+    }
+  }
+});
 
 function updateBackgrounds() {
   const topImg = document.getElementById('topBannerImg');
