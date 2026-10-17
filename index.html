@@ -62,7 +62,7 @@ body.dark .bg-setting-panel{background:#333;color:#eee}
   <div class="tabs">
     <button class="tab-btn active" data-tab="tab-calendar">🗓️ 月曆</button>
     <button class="tab-btn" data-tab="tab-recurring">🎂 週期性事件</button>
-    <button class="tab-btn" data-tab="tab-concert">🎤 演唱會</button>
+    <button class="tab-btn" data-tab="tab-concert">🎤 歌單</button>
     <button class="tab-btn" data-tab="tab-settings">⚙️ 設定 / 背景</button>
     <button class="btn btn-sm btn-secondary" id="darkToggle" onclick="toggleDark()">🌙</button>
   </div>
@@ -572,13 +572,13 @@ function addSong() {
 function batchAddSongs() {
   const text = document.getElementById('batchSongs').value;
   const lines = text.split('\n').map(l => l.replace(/^\s*\d+[\.\s]*/, '').trim()).filter(Boolean);
-  lines.forEach(title => songs.push({ id: Date.now() + Math.random(), title, lyric: '' }));
+  lines.forEach(title => songs.push({ id: Date.now() + Math.floor(Math.random()*1000), title, lyric: '' }));
   document.getElementById('batchSongs').value = '';
   save(); renderSongs();
 }
 function openLyric(id) {
-  const s = songs.find(x => x.id == id);
-  if (!s) return;
+  const s = songs.find(x => String(x.id) === String(id));
+  if (!s) { alert('找不到歌曲'); return; }
   editingSongId = s.id;
   document.getElementById('lyricText').value = s.lyric || '';
   document.getElementById('lyricEditor').style.display = 'block';
