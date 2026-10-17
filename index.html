@@ -521,7 +521,7 @@ function renderSongs() {
     <div style="display:flex;align-items:center;gap:6px;padding:6px 4px;border-bottom:1px solid #eee;cursor:pointer" onclick="showLyric(${s.id})">
       <input type="checkbox" class="song-check" data-id="${s.id}" onclick="event.stopPropagation()">
       <span style="flex:1;font-weight:600">${s.title}</span>
-      <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation();openLyric(${s.id})">編輯</button>
+      <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation();openLyric('${s.id}')">編輯</button>
     </div>
   `).join('');
 }
@@ -577,12 +577,12 @@ function batchAddSongs() {
   save(); renderSongs();
 }
 function openLyric(id) {
-  const s = songs.find(x => x.id === id);
+  const s = songs.find(x => x.id == id);
   if (!s) return;
-  editingSongId = id;
+  editingSongId = s.id;
   document.getElementById('lyricText').value = s.lyric || '';
   document.getElementById('lyricEditor').style.display = 'block';
-  showLyric(id);
+  showLyric(s.id);
 }
 function closeLyric() {
   document.getElementById('lyricEditor').style.display = 'none';
